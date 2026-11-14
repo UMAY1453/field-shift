@@ -1,0 +1,169 @@
+/* Orta boyutlu ekranlarda ana alanları alt alta getirir. */
+@media (max-width: 1050px) {
+    .hero-content,
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .hero {
+        padding-top: 54px;
+    }
+
+    .hero-highlights {
+        max-width: 680px;
+    }
+
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .recommendations-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Tablet görünümü */
+@media (max-width: 760px) {
+    :root {
+        --header-height: 68px;
+    }
+
+    .container {
+        width: min(calc(100% - 28px), var(--container-width));
+    }
+
+    .topbar-content {
+        gap: 12px;
+    }
+
+    .brand-copy small {
+        display: none;
+    }
+
+    .api-status {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+
+    .hero {
+        padding: 42px 0 32px;
+    }
+
+    .hero h1 {
+        font-size: clamp(2.25rem, 11vw, 3.7rem);
+    }
+
+    .hero-highlights {
+        grid-template-columns: 1fr;
+    }
+
+    .highlight-item + .highlight-item {
+        border-top: 1px solid var(--color-border);
+        border-left: 0;
+    }
+
+    .panel-heading,
+    .location-summary,
+    .results-heading,
+    .footer-content {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .panel-heading .secondary-button,
+    .results-heading .secondary-button {
+        width: 100%;
+    }
+
+    .map {
+        min-height: 370px;
+    }
+
+    .coordinate-grid {
+        width: 100%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .results-heading {
+        display: flex;
+    }
+
+    .source-banner {
+        align-items: flex-start;
+    }
+
+    .recommendations-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Telefon görünümü */
+@media (max-width: 520px) {
+    .container {
+        width: min(calc(100% - 20px), var(--container-width));
+    }
+
+    .brand-mark {
+        width: 40px;
+        height: 40px;
+    }
+
+    .brand-copy strong {
+        font-size: 0.95rem;
+    }
+
+    #api-status-text {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .hero h1 {
+        font-size: 2.45rem;
+    }
+
+    .map-panel,
+    .form-panel,
+    .chart-panel,
+    .risk-panel {
+        padding: 17px;
+    }
+
+    .panel,
+    .recommendation-card {
+        border-radius: var(--radius-medium);
+    }
+
+    .map {
+        min-height: 320px;
+    }
+
+    .coordinate-grid,
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-card {
+        align-items: center;
+    }
+
+    .source-banner {
+        flex-direction: column;
+    }
+
+    .chart-container {
+        height: 280px;
+    }
+
+    .loading-card {
+        align-items: flex-start;
+    }
+}
