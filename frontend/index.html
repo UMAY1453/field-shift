@@ -13,13 +13,8 @@
 
     <title>Field Shift | NASA Tarım Karar Desteği</title>
 
-    <!-- Leaflet haritasının temel stilleri. -->
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin="anonymous"
-    >
+    <!-- Leaflet stilleri yerel dist klasöründen yüklenir. -->
+    <link rel="stylesheet" href="./vendor/leaflet/dist/leaflet.css">
 
     <!-- Projeye ait stiller sırasıyla yüklenir. -->
     <link rel="stylesheet" href="./css/variables.css">
@@ -489,12 +484,8 @@
         Bu uygulamayı kullanabilmek için JavaScript’i etkinleştirmeniz gerekir.
     </noscript>
 
-    <!-- Leaflet, harita kodundan önce yüklenmelidir. -->
-    <script
-        src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9coqIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin="anonymous"
-    ></script>
+    <!-- Leaflet kütüphanesi yerel dist klasöründen yüklenir. -->
+    <script src="./vendor/leaflet/dist/leaflet.js"></script>
 
     <!-- Chart.js global Chart nesnesini oluşturur. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js"></script>

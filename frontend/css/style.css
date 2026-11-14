@@ -982,3 +982,24 @@ select:disabled {
 .footer a {
     color: #d8b86b;
 }
+
+/* Öneri kartlarındaki açıklama başlıkları */
+.recommendation-section-title {
+    display: block;
+    margin-top: 16px;
+    font-size: 0.82rem;
+}
+
+.recommendation-list li::marker {
+    color: var(--color-success);
+}
+
+.recommendation-list--risk li::marker {
+    color: var(--color-warning);
+}
+
+.secondary-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+    transform: none;
+}

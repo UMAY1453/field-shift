@@ -1,0 +1,28 @@
+{
+  "crops": [
+    {
+      "id": "wheat",
+      "name": "Buğday"
+    },
+    {
+      "id": "barley",
+      "name": "Arpa"
+    },
+    {
+      "id": "corn",
+      "name": "Mısır"
+    },
+    {
+      "id": "sunflower",
+      "name": "Ayçiçeği"
+    },
+    {
+      "id": "chickpea",
+      "name": "Nohut"
+    },
+    {
+      "id": "lentil",
+      "name": "Mercimek"
+    }
+  ]
+}

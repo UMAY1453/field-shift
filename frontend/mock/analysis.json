@@ -1,0 +1,167 @@
+{
+  "location": {
+    "latitude": 37.8746,
+    "longitude": 32.4932,
+    "label": "Seçilen demo konum"
+  },
+  "source": {
+    "name": "Field Shift Demo Data",
+    "mode": "demo",
+    "time_standard": "LST",
+    "start_date": "2025-11-08",
+    "end_date": "2026-11-07"
+  },
+  "summary": {
+    "average_temperature_c": 15.8,
+    "minimum_temperature_c": -4.2,
+    "maximum_temperature_c": 38.1,
+    "total_precipitation_mm": 326.4,
+    "dry_days": 214,
+    "longest_dry_spell_days": 24,
+    "hot_days": 17,
+    "data_completeness_percent": 98.9
+  },
+  "risk": {
+    "level": "medium",
+    "score": 58,
+    "reasons": [
+      "Seçilen dönemde 24 gün süren uzun bir kurak dönem tespit edildi.",
+      "Toplam yağış miktarı bölgenin tarımsal su ihtiyacı açısından düşüktür.",
+      "Yüksek sıcaklığın görüldüğü 17 gün tespit edildi."
+    ]
+  },
+  "monthly_climate": [
+    {
+      "month": "2025-11",
+      "average_temperature_c": 9.8,
+      "precipitation_mm": 27.4
+    },
+    {
+      "month": "2025-12",
+      "average_temperature_c": 4.6,
+      "precipitation_mm": 32.1
+    },
+    {
+      "month": "2026-01",
+      "average_temperature_c": 2.4,
+      "precipitation_mm": 31.6
+    },
+    {
+      "month": "2026-02",
+      "average_temperature_c": 4.1,
+      "precipitation_mm": 26.8
+    },
+    {
+      "month": "2026-03",
+      "average_temperature_c": 8.5,
+      "precipitation_mm": 36.2
+    },
+    {
+      "month": "2026-04",
+      "average_temperature_c": 13.2,
+      "precipitation_mm": 42.5
+    },
+    {
+      "month": "2026-05",
+      "average_temperature_c": 17.9,
+      "precipitation_mm": 39.7
+    },
+    {
+      "month": "2026-06",
+      "average_temperature_c": 22.6,
+      "precipitation_mm": 25.3
+    },
+    {
+      "month": "2026-07",
+      "average_temperature_c": 26.4,
+      "precipitation_mm": 8.4
+    },
+    {
+      "month": "2026-08",
+      "average_temperature_c": 26.1,
+      "precipitation_mm": 6.9
+    },
+    {
+      "month": "2026-09",
+      "average_temperature_c": 21.2,
+      "precipitation_mm": 19.3
+    },
+    {
+      "month": "2026-10",
+      "average_temperature_c": 14.7,
+      "precipitation_mm": 30.2
+    }
+  ],
+  "recommendations": [
+    {
+      "rank": 1,
+      "crop_id": "chickpea",
+      "crop_name": "Nohut",
+      "rotation": [
+        "Buğday",
+        "Nohut"
+      ],
+      "scores": {
+        "total": 87,
+        "climate": 84,
+        "water": 94,
+        "soil": 81,
+        "rotation": 89
+      },
+      "advantages": [
+        "Su ihtiyacı görece düşüktür.",
+        "Buğdaydan sonra farklı bir bitki ailesi kullanır.",
+        "Tınlı toprak koşullarıyla uyumludur."
+      ],
+      "risks": [
+        "Aşırı sıcak dönemlerde erken ekim gerekebilir."
+      ]
+    },
+    {
+      "rank": 2,
+      "crop_id": "lentil",
+      "crop_name": "Mercimek",
+      "rotation": [
+        "Buğday",
+        "Mercimek"
+      ],
+      "scores": {
+        "total": 81,
+        "climate": 78,
+        "water": 90,
+        "soil": 79,
+        "rotation": 84
+      },
+      "advantages": [
+        "Düşük su ihtiyacına sahiptir.",
+        "Tahıl sonrası rotasyona uygundur."
+      ],
+      "risks": [
+        "Aşırı yağışlı dönemlerde drenaj gerekebilir."
+      ]
+    },
+    {
+      "rank": 3,
+      "crop_id": "sunflower",
+      "crop_name": "Ayçiçeği",
+      "rotation": [
+        "Buğday",
+        "Ayçiçeği"
+      ],
+      "scores": {
+        "total": 73,
+        "climate": 77,
+        "water": 68,
+        "soil": 76,
+        "rotation": 72
+      },
+      "advantages": [
+        "Sıcak yaz koşullarına uyumludur.",
+        "Ürün çeşitliliğini artırır."
+      ],
+      "risks": [
+        "Kurak dönemde ek sulama gerektirebilir."
+      ]
+    }
+  ]
+}
