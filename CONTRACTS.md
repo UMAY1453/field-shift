@@ -253,7 +253,9 @@ NASA POWER cevabı analiz modülüne gönderilmeden önce aşağıdaki ortak yap
   "temperature_c": 7.4,
   "temperature_min_c": 1.2,
   "temperature_max_c": 13.8,
-  "precipitation_mm": 0.6
+  "precipitation_mm": 0.6,
+  "relative_humidity_percent": 68.4,
+  "root_zone_wetness": 0.57
 }
 ```
 
@@ -269,9 +271,17 @@ Eksik bir NASA değeri varsa `-999` gibi NASA dolgu değerleri kullanılmamalı,
   "temperature_c": null,
   "temperature_min_c": null,
   "temperature_max_c": null,
-  "precipitation_mm": 2.1
+  "precipitation_mm": 2.1,
+  "relative_humidity_percent": null,
+  "root_zone_wetness": null
 }
 ```
+
+`RH2M` ve `GWETROOT` zenginleştirici parametrelerdir. Bu iki parametreden biri
+veya her ikisi bazı günlerde eksik olduğunda ilgili alan `null` yapılır; temel
+sıcaklık ve yağış analizi çalışmaya devam eder. `0` değeri otomatik olarak eksik
+sayılmaz. `T2M`, `T2M_MIN`, `T2M_MAX` ve `PRECTOTCORR` temel analiz
+parametreleridir.
 
 `backend/data/demo_climate.json` dosyası da aynı kayıt yapısını kullanmalıdır.
 
@@ -289,7 +299,7 @@ Kullanılacak temel parametreler:
 
 ```text
 community=AG
-parameters=T2M,T2M_MIN,T2M_MAX,PRECTOTCORR
+parameters=T2M,T2M_MIN,T2M_MAX,PRECTOTCORR,RH2M,GWETROOT
 format=JSON
 time-standard=LST
 ```
@@ -302,6 +312,8 @@ Parametrelerin anlamları:
 | `T2M_MIN` | Günlük minimum sıcaklık |
 | `T2M_MAX` | Günlük maksimum sıcaklık |
 | `PRECTOTCORR` | Düzeltilmiş günlük toplam yağış |
+| `RH2M` | İki metre yükseklikteki bağıl nem |
+| `GWETROOT` | Kök bölgesi toprak ıslaklığı |
 
 NASA API’ye frontend doğrudan istek göndermeyecektir. NASA isteğini yalnızca backend gerçekleştirecektir.
 
