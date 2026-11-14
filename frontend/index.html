@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+
+    <!-- Mobil cihazlarda doğru ölçeklendirme sağlar. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="description"
+        content="NASA POWER verileriyle iklim riski ve ürün rotasyonu analizi."
+    >
+
+    <title>Field Shift | NASA Tarım Karar Desteği</title>
+
+    <!-- Leaflet haritasının temel stilleri. -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="anonymous"
+    >
+
+    <!-- Projeye ait stiller sırasıyla yüklenir. -->
+    <link rel="stylesheet" href="./css/variables.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/responsive.css">
+</head>
+
+<body>
+    <!-- Klavye kullanıcılarının doğrudan ana içeriğe geçmesini sağlar. -->
+    <a class="skip-link" href="#main-content">Ana içeriğe geç</a>
+
+    <!-- API isteği devam ederken gösterilecek yükleme katmanı. -->
+    <div
+        id="loading-overlay"
+        class="loading-overlay"
+        role="status"
+        aria-live="polite"
+        hidden
+    >
+        <div class="loading-card">
+            <span class="spinner" aria-hidden="true"></span>
+
+            <div>
+                <strong>İklim verileri analiz ediliyor</strong>
+                <p>NASA POWER verileri hazırlanıyor...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Uygulamanın üst bilgi alanı. -->
+    <header class="topbar">
+        <div class="container topbar-content">
+            <a class="brand" href="#" aria-label="Field Shift ana sayfa">
+                <span class="brand-mark" aria-hidden="true">FS</span>
+
+                <span class="brand-copy">
+                    <strong>Field Shift</strong>
+                    <small>NASA Tarım Karar Desteği</small>
+                </span>
+            </a>
+
+            <!-- Backend bağlantı durumu JavaScript tarafından güncellenecek. -->
+            <div
+                id="api-status"
+                class="api-status api-status--checking"
+                aria-live="polite"
+            >
+                <span class="status-dot" aria-hidden="true"></span>
+                <span id="api-status-text">Backend kontrol ediliyor</span>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <!-- Projenin amacını açıklayan giriş alanı. -->
+        <section class="hero">
+            <div class="container hero-content">
+                <div class="hero-copy">
+                    <span class="eyebrow">NASA POWER ile desteklenir</span>
+
+                    <h1>
+                        İklim değişirken
+                        <span>tarımsal kararlarınızı güçlendirin.</span>
+                    </h1>
+
+                    <p>
+                        Konumunuzu seçin, NASA iklim verilerini inceleyin ve
+                        açıklanabilir ürün rotasyonu önerileri alın.
+                    </p>
+                </div>
+
+                <div class="hero-highlights" aria-label="Uygulama özellikleri">
+                    <div class="highlight-item">
+                        <strong>Günlük</strong>
+                        <span>NASA iklim verisi</span>
+                    </div>
+
+                    <div class="highlight-item">
+                        <strong>Açıklanabilir</strong>
+                        <span>risk sonuçları</span>
+                    </div>
+
+                    <div class="highlight-item">
+                        <strong>Veri temelli</strong>
+                        <span>rotasyon önerileri</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="container page-content">
+            <!-- Harita ve analiz formu yan yana bulunur. -->
+            <section class="workspace" aria-label="Analiz ayarları">
+                <article class="panel map-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <span class="section-kicker">1. Adım</span>
+                            <h2>Konumunuzu seçin</h2>
+                            <p>Analiz edilecek tarım alanına haritadan tıklayın.</p>
+                        </div>
+
+                        <button
+                            id="use-location-button"
+                            class="secondary-button"
+                            type="button"
+                        >
+                            Konumumu kullan
+                        </button>
+                    </div>
+
+                    <!-- Leaflet bu div içine haritayı yerleştirecek. -->
+                    <div
+                        id="map"
+                        class="map"
+                        role="region"
+                        aria-label="Konum seçim haritası"
+                    >
+                        <div class="map-placeholder">
+                            <span class="spinner spinner--small" aria-hidden="true"></span>
+                            <span>Harita hazırlanıyor...</span>
+                        </div>
+                    </div>
+
+                    <div class="location-summary">
+                        <div class="location-title">
+                            <span class="location-icon" aria-hidden="true">⌖</span>
+
+                            <div>
+                                <small>Seçilen konum</small>
+                                <strong id="selected-location-text">
+                                    Henüz konum seçilmedi
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="coordinate-grid">
+                            <label for="latitude">
+                                Enlem
+                                <input
+                                    id="latitude"
+                                    name="latitude"
+                                    type="number"
+                                    step="any"
+                                    placeholder="Örn. 37.8746"
+                                    readonly
+                                    required
+                                >
+                            </label>
+
+                            <label for="longitude">
+                                Boylam
+                                <input
+                                    id="longitude"
+                                    name="longitude"
+                                    type="number"
+                                    step="any"
+                                    placeholder="Örn. 32.4932"
+                                    readonly
+                                    required
+                                >
+                            </label>
+                        </div>
+                    </div>
+                </article>
+
+                <aside class="panel form-panel">
+                    <div class="panel-heading panel-heading--compact">
+                        <div>
+                            <span class="section-kicker">2. Adım</span>
+                            <h2>Analiz ayarları</h2>
+                            <p>Tarımsal koşullarınızı ve önceliğinizi belirtin.</p>
+                        </div>
+                    </div>
+
+                    <!-- Form verileri POST /api/analyze isteğine dönüştürülecek. -->
+                    <form id="analysis-form" class="analysis-form" novalidate>
+                        <div class="form-group">
+                            <label for="current-crop">Mevcut ürün</label>
+
+                            <select
+                                id="current-crop"
+                                name="current_crop"
+                                required
+                                disabled
+                            >
+                                <option value="">Ürünler yükleniyor...</option>
+                            </select>
+
+                            <small>Şu anda tarlada yetiştirilen ürünü seçin.</small>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="soil-type">Toprak türü</label>
+
+                                <select id="soil-type" name="soil_type" required>
+                                    <option value="">Toprak türü seçin</option>
+                                    <option value="loamy">Tınlı</option>
+                                    <option value="clay">Killi</option>
+                                    <option value="sandy">Kumlu</option>
+                                    <option value="silty">Siltli</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="priority">Öncelik</label>
+
+                                <select id="priority" name="priority" required>
+                                    <option value="balanced">Dengeli sonuç</option>
+                                    <option value="water_saving">Su tasarrufu</option>
+                                    <option value="yield">Verim önceliği</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="start-date">Başlangıç tarihi</label>
+
+                                <input
+                                    id="start-date"
+                                    name="start_date"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="end-date">Bitiş tarihi</label>
+
+                                <input
+                                    id="end-date"
+                                    name="end_date"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Form doğrulama ve API hataları burada gösterilecek. -->
+                        <div
+                            id="error-message"
+                            class="alert alert--error"
+                            role="alert"
+                            hidden
+                        ></div>
+
+                        <button
+                            id="analyze-button"
+                            class="primary-button"
+                            type="submit"
+                        >
+                            <span>İklim analizini başlat</span>
+                            <span aria-hidden="true">→</span>
+                        </button>
+
+                        <p class="form-disclaimer">
+                            Sonuçlar karar desteği amacıyla sunulur ve profesyonel
+                            tarım danışmanlığının yerine geçmez.
+                        </p>
+                    </form>
+                </aside>
+            </section>
+
+            <!-- Analiz yapılmadan önce sonuç bölümü gizlidir. -->
+            <section
+                id="results-section"
+                class="results-section"
+                aria-labelledby="results-title"
+                hidden
+            >
+                <div class="results-heading">
+                    <div>
+                        <span class="section-kicker">Analiz sonucu</span>
+                        <h2 id="results-title">İklim görünümü</h2>
+                        <p id="results-location">
+                            Seçilen konuma ait iklim ve rotasyon sonuçları.
+                        </p>
+                    </div>
+
+                    <button
+                        id="scroll-to-form-button"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        Yeni analiz
+                    </button>
+                </div>
+
+                <!-- Verinin canlı, cache veya demo olduğu burada belirtilir. -->
+                <div id="source-banner" class="source-banner" data-mode="live">
+                    <div>
+                        <span class="source-icon" aria-hidden="true">◉</span>
+
+                        <div>
+                            <strong id="source-title">NASA POWER verisi</strong>
+                            <p id="source-description">
+                                Analiz canlı NASA verileriyle oluşturuldu.
+                            </p>
+                        </div>
+                    </div>
+
+                    <span id="source-mode" class="source-badge">LIVE</span>
+                </div>
+
+                <!-- İklim özet metrikleri JavaScript tarafından doldurulur. -->
+                <div class="summary-grid">
+                    <article class="metric-card">
+                        <span class="metric-icon metric-icon--temperature" aria-hidden="true">
+                            °C
+                        </span>
+
+                        <div>
+                            <small>Ortalama sıcaklık</small>
+
+                            <strong>
+                                <span id="average-temperature">—</span>
+                                <span class="metric-unit">°C</span>
+                            </strong>
+
+                            <p id="temperature-range">Min — / Maks —</p>
+                        </div>
+                    </article>
+
+                    <article class="metric-card">
+                        <span class="metric-icon metric-icon--rain" aria-hidden="true">
+                            mm
+                        </span>
+
+                        <div>
+                            <small>Toplam yağış</small>
+
+                            <strong>
+                                <span id="total-precipitation">—</span>
+                                <span class="metric-unit">mm</span>
+                            </strong>
+
+                            <p>Seçilen tarih aralığı</p>
+                        </div>
+                    </article>
+
+                    <article class="metric-card">
+                        <span class="metric-icon metric-icon--dry" aria-hidden="true">
+                            ☀
+                        </span>
+
+                        <div>
+                            <small>Kurak gün</small>
+
+                            <strong>
+                                <span id="dry-days">—</span>
+                                <span class="metric-unit">gün</span>
+                            </strong>
+
+                            <p>
+                                En uzun dönem:
+                                <span id="longest-dry-spell">—</span> gün
+                            </p>
+                        </div>
+                    </article>
+
+                    <article class="metric-card metric-card--risk">
+                        <span class="metric-icon metric-icon--risk" aria-hidden="true">
+                            !
+                        </span>
+
+                        <div>
+                            <small>İklim risk skoru</small>
+
+                            <strong>
+                                <span id="risk-score">—</span>
+                                <span class="metric-unit">/100</span>
+                            </strong>
+
+                            <span id="risk-level" class="risk-badge">
+                                Hesaplanmadı
+                            </span>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="analysis-grid">
+                    <!-- Chart.js grafiği bu canvas üzerinde oluşturulur. -->
+                    <article class="panel chart-panel">
+                        <div class="panel-heading panel-heading--compact">
+                            <div>
+                                <span class="section-kicker">Aylık değişim</span>
+                                <h3>Sıcaklık ve yağış</h3>
+                            </div>
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas
+                                id="climate-chart"
+                                aria-label="Aylık sıcaklık ve yağış grafiği"
+                            ></canvas>
+                        </div>
+                    </article>
+
+                    <article class="panel risk-panel">
+                        <div class="panel-heading panel-heading--compact">
+                            <div>
+                                <span class="section-kicker">Risk açıklaması</span>
+                                <h3>Öne çıkan göstergeler</h3>
+                            </div>
+                        </div>
+
+                        <!-- Risk nedenleri liste elemanı olarak eklenecek. -->
+                        <ul id="risk-reasons" class="risk-list">
+                            <li>Analizden sonra risk nedenleri burada gösterilecek.</li>
+                        </ul>
+
+                        <div class="data-quality">
+                            <span>Veri bütünlüğü</span>
+
+                            <strong>
+                                <span id="data-completeness">—</span>%
+                            </strong>
+                        </div>
+                    </article>
+                </div>
+
+                <section class="recommendations-section">
+                    <div class="results-heading results-heading--small">
+                        <div>
+                            <span class="section-kicker">3. Adım</span>
+                            <h2>Ürün rotasyonu önerileri</h2>
+                            <p>
+                                İklim, su ihtiyacı, toprak ve rotasyon uyumuna
+                                göre sıralanır.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Öneri kartları ui.js tarafından oluşturulacak. -->
+                    <div
+                        id="recommendations"
+                        class="recommendations-grid"
+                        aria-live="polite"
+                    ></div>
+                </section>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <div>
+                <strong>Field Shift</strong>
+                <p>NASA verileriyle iklime dayanıklı tarım kararları.</p>
+            </div>
+
+            <p>
+                Veri kaynağı:
+                <a
+                    href="https://power.larc.nasa.gov/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    NASA POWER
+                </a>
+            </p>
+        </div>
+    </footer>
+
+    <noscript>
+        Bu uygulamayı kullanabilmek için JavaScript’i etkinleştirmeniz gerekir.
+    </noscript>
+
+    <!-- Leaflet, harita kodundan önce yüklenmelidir. -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9coqIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin="anonymous"
+    ></script>
+
+    <!-- Chart.js global Chart nesnesini oluşturur. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js"></script>
+
+    <!-- Uygulamanın modüler JavaScript giriş noktası. -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
