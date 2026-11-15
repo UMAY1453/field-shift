@@ -8,6 +8,7 @@ import {
     initializeMap,
     invalidateMapSize,
     resetMapSelection,
+    setMapLocation,
     useCurrentLocation,
 } from "./map.js";
 
@@ -24,7 +25,6 @@ import {
     renderAnalysisResult,
     scrollToForm,
     scrollToResults,
-    setDefaultDateRange,
     setLoading,
     showCropsUnavailable,
     showError,
@@ -71,6 +71,29 @@ async function initializeCrops() {
 function handleLocationChange(coordinates) {
     updateSelectedLocation(coordinates);
     clearError();
+}
+
+/**
+ * Elle girilen koordinatları doğrular ve haritadaki konumu günceller.
+ */
+function handleManualCoordinates() {
+    const latitudeInput = document.getElementById("latitude");
+    const longitudeInput = document.getElementById("longitude");
+
+    const latitudeValue = latitudeInput.value;
+    const longitudeValue = longitudeInput.value;
+
+    // İki alan da doldurulmadan harita güncellenmez.
+    if (!latitudeValue || !longitudeValue) {
+        return;
+    }
+
+    try {
+        setMapLocation(latitudeValue, longitudeValue);
+        clearError();
+    } catch (error) {
+        showError(error.message);
+    }
 }
 
 /**
@@ -145,6 +168,13 @@ function registerEventListeners() {
         .addEventListener("click", handleCurrentLocation);
 
     document
+        .getElementById("latitude")
+        .addEventListener("change", handleManualCoordinates);
+
+    document
+        .getElementById("longitude")
+        .addEventListener("change", handleManualCoordinates);
+    document
         .getElementById("scroll-to-form-button")
         .addEventListener("click", handleNewAnalysis);
 
@@ -165,7 +195,6 @@ function registerEventListeners() {
  */
 function initializeApplication() {
     try {
-        setDefaultDateRange();
         initializeMap(handleLocationChange);
         registerEventListeners();
 

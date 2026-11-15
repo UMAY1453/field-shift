@@ -103,7 +103,9 @@
                         <div>
                             <span class="section-kicker">1. Adım</span>
                             <h2>Konumunuzu seçin</h2>
-                            <p>Analiz edilecek tarım alanına haritadan tıklayın.</p>
+                            <p>
+                                Haritadan bir konum seçin veya enlem ve boylamı elle girin.
+                            </p>
                         </div>
 
                         <button
@@ -148,8 +150,9 @@
                                     name="latitude"
                                     type="number"
                                     step="any"
-                                    placeholder="Örn. 37.8746"
-                                    readonly
+                                    min="-90"
+                                    max="90"
+                                    placeholder="Örn. 40.195"
                                     required
                                 >
                             </label>
@@ -161,8 +164,9 @@
                                     name="longitude"
                                     type="number"
                                     step="any"
-                                    placeholder="Örn. 32.4932"
-                                    readonly
+                                    min="-180"
+                                    max="180"
+                                    placeholder="Örn. 29.06"
                                     required
                                 >
                             </label>
@@ -189,14 +193,15 @@
                                 <select
                                     id="previous-crop"
                                     name="previous_crop"
+                                    required
                                     disabled
                                 >
                                     <option value="">Ürünler yükleniyor...</option>
                                 </select>
 
                                 <small>
-                                    Bilmiyorsanız “Bilmiyorum”, tarla nadasa bırakıldıysa
-                                    “Nadas” seçin.
+                                    Tarlada en son yetiştirilen ürünü seçin.
+                                    Tarla nadasa bırakıldıysa “Nadas” seçin.
                                 </small>
                             </div>
 
@@ -216,20 +221,21 @@
                             </div>
                         </div>
 
-                        <!-- Sonraki ürün isteğe bağlıdır. -->
+                        <!-- Sonraki dönem ürünü güncel API sözleşmesinde zorunludur. -->
                         <div class="form-group">
                             <label for="next-crop">Sonraki dönem ürünü</label>
 
                             <select
                                 id="next-crop"
                                 name="next_crop"
+                                required
                                 disabled
                             >
                                 <option value="">Ürünler yükleniyor...</option>
                             </select>
 
                             <small>
-                                Bu ürünün hasadından sonra yetiştirmeyi düşündüğünüz ürünü seçebilirsiniz.
+                                Bu ürünün hasadından sonra yetiştirmeyi düşündüğünüz ürünü seçin.
                             </small>
                         </div>
 
@@ -259,26 +265,37 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="start-date">Başlangıç tarihi</label>
+                                <label for="harvest-start-date">
+                                    Planlanan hasat başlangıcı
+                                </label>
 
                                 <input
-                                    id="start-date"
-                                    name="start_date"
+                                    id="harvest-start-date"
+                                    name="harvest_start_date"
                                     type="date"
                                     required
                                 >
                             </div>
 
                             <div class="form-group">
-                                <label for="end-date">Bitiş tarihi</label>
+                                <label for="harvest-end-date">
+                                    Planlanan hasat bitişi
+                                </label>
 
                                 <input
-                                    id="end-date"
-                                    name="end_date"
+                                    id="harvest-end-date"
+                                    name="harvest_end_date"
                                     type="date"
                                     required
                                 >
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <small>
+                                Planlanan hasat dönemi, son beş yılın aynı tarih
+                                aralıklarıyla karşılaştırılır.
+                            </small>
                         </div>
 
                         <!-- Form doğrulama ve API hataları burada gösterilecek. -->
