@@ -19,14 +19,15 @@ Uygulama kesin tarımsal tavsiye vermek yerine veri temelli bir karar desteği s
 ## Temel Özellikler
 
 - Leaflet tabanlı etkileşimli konum seçimi
-- NASA POWER günlük iklim verisi
-- Sıcaklık ve yağış analizi
+- NASA POWER günlük sıcaklık, yağış, bağıl nem ve kök bölgesi ıslaklığı verisi
+- Sıcaklık, yağış ve veri tamlığı analizi
 - Kurak gün ve sıcak gün hesaplaması
 - En uzun kurak dönem tespiti
 - Açıklanabilir iklim risk skoru
 - Toprak ve iklim uyumuna dayalı ürün rotasyonu önerileri
 - Chart.js ile iklim grafikleri
-- NASA servisine ulaşılamadığında demo veri desteği
+- Tekrarlı istekleri azaltan yerel önbellek (cache)
+- NASA servisine ulaşılamadığında Bursa 2021–2025 demo veri desteği
 - Mobil ve masaüstü uyumlu kullanıcı arayüzü
 
 ## Kullanılan Teknolojiler
@@ -45,7 +46,6 @@ Uygulama kesin tarımsal tavsiye vermek yerine veri temelli bir karar desteği s
 - FastAPI
 - Uvicorn
 - HTTPX
-- Pandas
 - Pydantic
 
 ### Test
@@ -87,9 +87,9 @@ Frontend, NASA POWER servisine doğrudan bağlanmaz. Bütün dış veri istekler
 ## Veri Akışı
 
 1. Kullanıcı haritadan bir konum seçer.
-2. Kullanıcı mevcut ürününü, toprak türünü ve önceliğini belirler.
+2. Kullanıcı önceki, mevcut ve sonraki ürün planını; toprak türünü ve önceliğini belirler.
 3. Frontend, `POST /api/analyze` isteğini backend’e gönderir.
-4. Backend, NASA POWER üzerinden günlük sıcaklık ve yağış verilerini alır.
+4. Backend, NASA POWER üzerinden altı günlük iklim parametresini alır.
 5. NASA cevabı ortak günlük iklim kayıtlarına dönüştürülür.
 6. İklim analiz modülü özet ve risk değerlerini hesaplar.
 7. Ürün rotasyonu modülü uygun ürünleri puanlar.
@@ -125,6 +125,7 @@ field-shift/
 │   ├── main.py
 │   ├── models.py
 │   ├── nasa_service.py
+│   ├── climate_pipeline.py
 │   ├── climate_analysis.py
 │   ├── recommendation.py
 │   ├── data/
@@ -133,7 +134,10 @@ field-shift/
 │   └── cache/
 └── tests/
     ├── __init__.py
+    ├── test_main.py
     ├── test_nasa_service.py
+    ├── test_climate_pipeline.py
+    ├── test_crops_data.py
     ├── test_climate_analysis.py
     └── test_recommendation.py
 ```
@@ -180,7 +184,7 @@ python -m pip install -r requirements.txt
 python --version
 ```
 
-Beklenen sürüm:
+Projenin geliştirildiği ve test edildiği sürüm:
 
 ```text
 Python 3.14.8
@@ -224,6 +228,10 @@ http://127.0.0.1:5500
 
 Backend ve frontend aynı anda çalışmalıdır.
 
+`127.0.0.1` ve `localhost`, uygulamayı çalıştıran bilgisayarı ifade eder. Repoyu
+başka bir bilgisayara klonlayan kişi backend ve frontend komutlarını kendi
+bilgisayarında çalıştırdığında bu adresler değişmeden kullanılabilir.
+
 ## API Endpoint’leri
 
 | Yöntem | Adres | Açıklama |
@@ -233,6 +241,34 @@ Backend ve frontend aynı anda çalışmalıdır.
 | `POST` | `/api/analyze` | İklim analizi ve rotasyon önerisi üretir |
 
 Ayrıntılı istek ve cevap yapıları için `CONTRACTS.md` dosyasına bakın.
+
+### Örnek analiz isteği
+
+```json
+{
+  "latitude": 40.195,
+  "longitude": 29.06,
+  "start_date": "2021-01-01",
+  "end_date": "2025-12-31",
+  "previous_crop": "wheat",
+  "current_crop": "chickpea",
+  "next_crop": "sunflower",
+  "soil_type": "loamy",
+  "priority": "water_saving"
+}
+```
+
+`previous_crop` bilinmiyorsa `null`, tarla nadasa bırakıldıysa `"fallow"`
+gönderilebilir. `next_crop` bilinmiyorsa `null` gönderilebilir. `current_crop`
+zorunludur.
+
+API cevabındaki `source.mode` alanı veri kaynağının durumunu gösterir:
+
+- `live`: Veri NASA POWER servisinden yeni alındı.
+- `cache`: Daha önce alınmış geçerli veri önbellekten kullanıldı.
+- `demo`: NASA servisine ulaşılamadığında Bursa demo verisi kullanıldı.
+
+Bu üç değer de kontrollü ve geçerli çalışma durumlarıdır.
 
 ## NASA POWER Parametreleri
 
@@ -244,8 +280,17 @@ Prototip aşağıdaki günlük NASA POWER parametrelerini kullanır:
 | `T2M_MIN` | Günlük minimum sıcaklık |
 | `T2M_MAX` | Günlük maksimum sıcaklık |
 | `PRECTOTCORR` | Düzeltilmiş günlük toplam yağış |
+| `RH2M` | İki metre yükseklikteki bağıl nem |
+| `GWETROOT` | Kök bölgesi toprak ıslaklığı |
 
-NASA POWER verileri `JSON` formatında alınır.
+NASA POWER verileri `community=AG`, `format=JSON` ve `time-standard=LST`
+ayarlarıyla alınır. `T2M`, `T2M_MIN`, `T2M_MAX` ve `PRECTOTCORR` çekirdek analiz
+parametreleridir. `RH2M` ve `GWETROOT` zenginleştirici parametrelerdir; bu iki
+alandaki eksik değerler `null` olarak korunur ve temel analiz akışını durdurmaz.
+Gerçek `0` değerleri eksik veri olarak değerlendirilmez.
+
+Hackathon demosunun odak konumu Bursa (`40.195`, `29.06`), varsayılan analiz
+dönemi ise 1 Ocak 2021–31 Aralık 2025'tir.
 
 ## Branch Yapısı
 
@@ -280,6 +325,23 @@ Ayrıntılı çıktı için:
 ```powershell
 python -m pytest -v
 ```
+
+## Yayınlama Notu
+
+GitHub kaynak kodunu barındırır; uygulamayı tek başına internette çalıştırmaz.
+Yerel geliştirme ve bilgisayardan yapılacak hackathon sunumu için mevcut
+`127.0.0.1` adresleri yeterlidir.
+
+Uygulama internete yayınlanacaksa:
+
+1. FastAPI backend bir sunucuya yayınlanır.
+2. Frontend tarafındaki `window.FIELD_SHIFT_API_URL` değeri yayınlanan backend
+   adresine ayarlanır. Ayarlanmadığında geliştirme varsayılanı
+   `http://127.0.0.1:8000` kullanılır.
+3. `backend/main.py` içindeki CORS izinlerine yayınlanan frontend adresi eklenir.
+4. `/api/health`, `/api/crops` ve `/api/analyze` için canlı ortam testi yapılır.
+
+Deployment adresleri belli olmadan localhost ve CORS değerleri değiştirilmemelidir.
 
 ## Lisans
 
