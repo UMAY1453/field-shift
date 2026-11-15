@@ -258,6 +258,25 @@ Ayrıntılı istek ve cevap yapıları için `CONTRACTS.md` dosyasına bakın.
 }
 ```
 
+Normal kullanıcı akışında iklim tarihleri ile önceki ve sonraki ürün alanları
+gönderilmeyebilir. Bu durumda backend `2021-01-01`–`2025-12-31` iklim referans
+dönemini ve bilinmeyen rotasyon alanları için `null` değerini otomatik kullanır:
+
+```json
+{
+  "latitude": 40.195,
+  "longitude": 29.06,
+  "current_crop": "corn",
+  "soil_type": "loamy",
+  "priority": "water_saving"
+}
+```
+
+İklim referans dönemi, ürünün bu süre boyunca kesintisiz yetiştirileceği
+anlamına gelmez. `previous_crop`, `current_crop` ve `next_crop` birbirini izleyen
+ekim dönemlerini temsil eder. Özel tarih aralıkları API ve teknik testler için
+gönderilmeye devam edilebilir.
+
 `previous_crop` bilinmiyorsa `null`, tarla nadasa bırakıldıysa `"fallow"`
 gönderilebilir. `next_crop` bilinmiyorsa `null` gönderilebilir. `current_crop`
 zorunludur.

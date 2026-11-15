@@ -18,6 +18,8 @@ RiskLevel = Literal["low", "medium", "high"]
 GrowingSeason = Literal["spring", "summer", "autumn", "winter"]
 WaterNeed = Literal["low", "medium", "high"]
 MAX_ANALYSIS_DAYS = 1826
+DEFAULT_REFERENCE_START_DATE = date(2021, 1, 1)
+DEFAULT_REFERENCE_END_DATE = date(2025, 12, 31)
 
 
 class ApiModel(BaseModel):
@@ -84,11 +86,11 @@ class CropsResponse(ApiModel):
 class AnalyzeRequest(ApiModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    start_date: date
-    end_date: date
-    previous_crop: str | None = Field(min_length=1)
+    start_date: date = DEFAULT_REFERENCE_START_DATE
+    end_date: date = DEFAULT_REFERENCE_END_DATE
+    previous_crop: str | None = Field(default=None, min_length=1)
     current_crop: str = Field(min_length=1)
-    next_crop: str | None = Field(min_length=1)
+    next_crop: str | None = Field(default=None, min_length=1)
     soil_type: SoilType
     priority: Priority
 

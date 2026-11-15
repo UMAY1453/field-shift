@@ -17,6 +17,8 @@ from backend.models import (
     AnalyzeRequest,
     ClimateAnalysisResult,
     DailyClimateRecord,
+    DEFAULT_REFERENCE_END_DATE,
+    DEFAULT_REFERENCE_START_DATE,
     MonthlyClimate,
     PlannedRotationAssessment,
     RecommendationScores,
@@ -106,6 +108,48 @@ def test_analyze_request_accepts_nullable_rotation_context() -> None:
     assert request.previous_crop is None
     assert request.current_crop == "chickpea"
     assert request.next_crop is None
+
+
+def test_analyze_request_uses_default_reference_period_and_rotation_context() -> None:
+    request = AnalyzeRequest(
+        latitude=40.195,
+        longitude=29.06,
+        current_crop="corn",
+        soil_type="loamy",
+        priority="water_saving",
+    )
+
+    assert request.start_date == DEFAULT_REFERENCE_START_DATE
+    assert request.end_date == DEFAULT_REFERENCE_END_DATE
+    assert request.previous_crop is None
+    assert request.next_crop is None
+
+
+def test_analyze_request_still_accepts_custom_reference_period() -> None:
+    request = AnalyzeRequest(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-06-30",
+        current_crop="corn",
+        soil_type="loamy",
+        priority="balanced",
+    )
+
+    assert request.start_date.isoformat() == "2021-01-01"
+    assert request.end_date.isoformat() == "2021-06-30"
+
+
+def test_analyze_request_keeps_current_crop_required() -> None:
+    with pytest.raises(ValidationError):
+        AnalyzeRequest.model_validate(
+            {
+                "latitude": 40.195,
+                "longitude": 29.06,
+                "soil_type": "loamy",
+                "priority": "balanced",
+            }
+        )
 
 
 def test_analyze_request_accepts_fallow_as_previous_crop() -> None:
@@ -348,6 +392,43 @@ async def test_analyze_endpoint_combines_climate_and_rotation(
         item["crop_id"] != "chickpea"
         for item in payload["recommendations"]
     )
+
+
+@pytest.mark.asyncio
+async def test_analyze_endpoint_accepts_minimal_user_facing_request(
+    monkeypatch,
+) -> None:
+    received_pipeline_arguments = {}
+
+    async def fake_pipeline(**kwargs) -> ClimatePipelineResult:
+        received_pipeline_arguments.update(kwargs)
+        return _successful_pipeline_result()
+
+    monkeypatch.setattr("backend.main.run_climate_pipeline", fake_pipeline)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/analyze",
+            json={
+                "latitude": 40.195,
+                "longitude": 29.06,
+                "current_crop": "corn",
+                "soil_type": "loamy",
+                "priority": "water_saving",
+            },
+        )
+
+    assert response.status_code == 200
+    assert received_pipeline_arguments["start_date"] == DEFAULT_REFERENCE_START_DATE
+    assert received_pipeline_arguments["end_date"] == DEFAULT_REFERENCE_END_DATE
+    payload = response.json()
+    assert payload["source"]["start_date"] == "2021-01-01"
+    assert payload["source"]["end_date"] == "2025-12-31"
+    assert payload["planned_rotation_assessment"]["crop_id"] == "corn"
 
 
 @pytest.mark.asyncio

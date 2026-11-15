@@ -186,19 +186,20 @@ Content-Type: application/json
 |---|---|---|
 | `latitude` | number | `-90` ile `90` arasında olmalı |
 | `longitude` | number | `-180` ile `180` arasında olmalı |
-| `start_date` | string | `YYYY-MM-DD` formatında olmalı |
-| `end_date` | string | `YYYY-MM-DD` formatında olmalı |
-| `previous_crop` | string veya null | `crops.json` içindeki ürün kimliklerinden biri, özel `fallow` değeri veya `null` olmalı |
+| `start_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2021-01-01` kullanılır |
+| `end_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2025-12-31` kullanılır |
+| `previous_crop` | string veya null, isteğe bağlı | `crops.json` içindeki ürün kimliklerinden biri, özel `fallow` değeri veya `null` olmalı; gönderilmezse `null` kullanılır |
 | `current_crop` | string | Kullanıcının şimdi ekmek veya dikmek istediği ürünün `crops.json` içindeki kimliği olmalı |
-| `next_crop` | string veya null | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği veya `null` olmalı |
+| `next_crop` | string veya null, isteğe bağlı | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği veya `null` olmalı; gönderilmezse `null` kullanılır |
 | `soil_type` | string | `sandy`, `loamy`, `clay` veya `silty` |
 | `priority` | string | `balanced`, `water_saving` veya `yield` |
 
 `start_date`, `end_date` tarihinden sonra olamaz.
 
-Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri NASA POWER isteğinde kullanılmak üzere `YYYYMMDD` biçimine dönüştürür.
+Frontend tarihleri gönderirse `YYYY-MM-DD` biçimini kullanır. NASA servisi bu tarihleri NASA POWER isteğinde kullanılmak üzere `YYYYMMDD` biçimine dönüştürür. Tarihler gönderilmezse backend son beş tamamlanmış yıllık Bursa referans dönemi olan `2021-01-01`–`2025-12-31` aralığını otomatik kullanır.
 
 `start_date` ve `end_date` ürünlerin ekim veya hasat tarihleri değil, NASA iklim analiz dönemidir.
+Bu aralık, seçilen ürünün beş yıl boyunca yetiştirileceği anlamına gelmez. `previous_crop → current_crop → next_crop` alanları kesin ay veya yıl sürelerini değil, birbirini izleyen ekim dönemlerini temsil eder.
 
 `climate_result.summary.total_precipitation_mm`, `start_date` ile `end_date` arasındaki analiz döneminin
 toplam yağışıdır. Rotasyon modülü bu değeri `annual_precipitation_range_mm` ile karşılaştırmadan önce analiz
