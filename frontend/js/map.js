@@ -98,6 +98,27 @@ export function initializeMap(onLocationChange) {
 }
 
 /**
+ * Elle girilen koordinatları doğrular ve haritada gösterir.
+ */
+export function setMapLocation(latitude, longitude) {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+    ) {
+        throw new Error("Geçerli bir enlem ve boylam girin.");
+    }
+
+    selectLocation(lat, lng);
+}
+
+/**
  * Tarayıcıdan kullanıcının mevcut konum iznini ister.
  */
 export function useCurrentLocation() {
