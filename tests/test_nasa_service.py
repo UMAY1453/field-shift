@@ -437,6 +437,9 @@ async def test_retry_does_not_repeat_non_retryable_error() -> None:
             status_code=422,
         )
 
+    async def fake_sleep(delay: float) -> None:
+        return None
+
     with pytest.raises(NasaServiceError) as error:
         await fetch_nasa_daily_data_with_retry(
             latitude=40.195,
@@ -444,7 +447,7 @@ async def test_retry_does_not_repeat_non_retryable_error() -> None:
             start_date="2021-01-01",
             end_date="2021-01-01",
             fetcher=fetcher,
-            sleep=lambda delay: None,
+            sleep=fake_sleep,
         )
 
     assert error.value.code == "NASA_VALIDATION_ERROR"

@@ -37,15 +37,21 @@ class AnalyzeRequest(ApiModel):
     longitude: float = Field(ge=-180, le=180)
     start_date: date
     end_date: date
+    previous_crop: str | None = Field(min_length=1)
     current_crop: str = Field(min_length=1)
+    next_crop: str | None = Field(min_length=1)
     soil_type: SoilType
     priority: Priority
 
     @model_validator(mode="after")
-    def validate_date_order(self) -> "AnalyzeRequest":
+    def validate_request_rules(self) -> "AnalyzeRequest":
         if self.start_date > self.end_date:
             raise ValueError(
                 "Başlangıç tarihi, bitiş tarihinden sonra olamaz."
+            )
+        if self.current_crop == "fallow" or self.next_crop == "fallow":
+            raise ValueError(
+                "fallow yalnızca previous_crop alanında kullanılabilir."
             )
         return self
 
@@ -101,8 +107,8 @@ class ClimateRisk(ApiModel):
 
 class MonthlyClimate(ApiModel):
     month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
-    average_temperature_c: float
-    precipitation_mm: float
+    average_temperature_c: float | None
+    precipitation_mm: float | None
 
 
 class RecommendationScores(ApiModel):
@@ -113,8 +119,18 @@ class RecommendationScores(ApiModel):
     rotation: int = Field(ge=0, le=100)
 
 
+class PlannedRotationAssessment(ApiModel):
+    crop_id: str = Field(min_length=1)
+    crop_name: str = Field(min_length=1)
+    rotation: list[str] = Field(min_length=1)
+    scores: RecommendationScores
+    advantages: list[str]
+    risks: list[str]
+    limitations: list[str]
+
+
 class Recommendation(ApiModel):
-    rank: int = Field(ge=1)
+    rank: int = Field(ge=1, le=3)
     crop_id: str = Field(min_length=1)
     crop_name: str = Field(min_length=1)
     rotation: list[str] = Field(min_length=1)
@@ -129,7 +145,8 @@ class AnalyzeResponse(ApiModel):
     summary: ClimateSummary
     risk: ClimateRisk
     monthly_climate: list[MonthlyClimate]
-    recommendations: list[Recommendation]
+    planned_rotation_assessment: PlannedRotationAssessment
+    recommendations: list[Recommendation] = Field(max_length=3)
 
 
 class ErrorDetail(ApiModel):

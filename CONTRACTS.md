@@ -305,6 +305,11 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
 }
 ```
 
+`monthly_climate` içindeki `average_temperature_c` ve `precipitation_mm`
+alanları `number` veya `null` olabilir. İlgili ayda bir metrik için hiç geçerli
+ölçüm yoksa alan `null` olur; geçerli ölçümlerin tamamı gerçek sıfırsa değer
+`0.0` olarak korunur. Veri boşluğunu gizlememek için ay listeden çıkarılmaz.
+
 `planned_rotation_assessment`, kullanıcının `current_crop` olarak seçtiği ürünü; biliniyorsa önceki ve sonraki ürünlerle birlikte değerlendirir.
 
 `recommendations`, `current_crop` yerine aynı ekim için kullanılabilecek alternatifleri içerir. Öneriler, kullanıcının seçtiği üründen sonraki sezon için değildir.
