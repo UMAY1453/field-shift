@@ -1,54 +1,60 @@
-# Field Shift — Teknik Sözleşmeler
+# Field Shift - Technical Contracts
 
-## 1. Amaç
+## 1. Purpose
 
-Bu dosya frontend, NASA veri servisi, iklim analizi ve ürün rotasyonu modülleri arasındaki ortak veri sözleşmelerini tanımlar.
+This document defines the shared data contracts between the browser interface, FastAPI application, NASA POWER data layer, climate analysis, historical harvest-window analysis, and crop-rotation recommendation engine.
 
-Ekip üyeleri kendi modüllerini bu sözleşmelere uygun geliştirmelidir. Bir alan adı veya veri yapısı değiştirilmeden önce ekip bilgilendirilmeli ve bu dosya güncellenmelidir.
+Public field names and structures must not change without updating the affected modules, tests, and this document.
 
----
+## 2. General Rules
 
-## 2. Genel Kurallar
+- The API accepts and returns JSON.
+- JSON field names use `snake_case`.
+- Dates use the ISO `YYYY-MM-DD` format.
+- Temperatures use degrees Celsius (`°C`).
+- Precipitation uses millimetres (`mm`).
+- Scores use the inclusive `0-100` range.
+- Missing numeric climate measurements are represented by `null`.
+- Boolean values are never accepted as numbers.
+- `NaN`, positive infinity, and negative infinity are rejected.
+- A real numeric `0` is valid data and is not treated as missing.
+- User-facing explanations must distinguish evidence, assumptions, and limitations.
+- Results must be presented as decision support, not as guaranteed agronomic advice or a weather forecast.
+- Unknown request fields are rejected.
 
-- API, JSON alır ve JSON döndürür.
-- JSON alan adlarında `snake_case` kullanılır.
-- Tarihler `YYYY-MM-DD` formatında gönderilir.
-- Sıcaklık değerleri santigrat derece (`°C`) olarak kullanılır.
-- Yağış değerleri milimetre (`mm`) olarak kullanılır.
-- Skorlar `0–100` arasında tutulur.
-- Eksik sayısal NASA verileri `null` olarak temsil edilir.
-- Kullanıcıya gösterilen açıklamalar açık ve anlaşılır olmalıdır.
-- Bilimsel kesinliği olmayan sonuçlar kesin öneri gibi sunulmamalıdır.
+## 3. Application Addresses
 
----
+### Production
 
-## 3. Yerel API Adresi
+```text
+https://field-shift-mocha-sigma.vercel.app
+```
 
-Backend varsayılan olarak aşağıdaki adreste çalışır:
+The production deployment serves the frontend and API from the same origin.
+
+### Local development
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Frontend bütün backend isteklerini `/api` ile başlayan adreslere gönderir.
+Run the local application with:
 
-Örnek:
-
-```text
-http://127.0.0.1:8000/api/health
+```powershell
+python -m uvicorn backend.main:app --reload
 ```
 
----
+All API routes begin with `/api`. FastAPI also serves the frontend from `/`, so a separate frontend server is not required. Ports `5500` on `localhost` and `127.0.0.1` remain allowed by CORS for optional frontend-only development.
 
-## 4. Sağlık Kontrolü
+## 4. Health Endpoint
 
-### İstek
+### Request
 
 ```http
 GET /api/health
 ```
 
-### Başarılı cevap
+### Successful response
 
 ```json
 {
@@ -57,88 +63,86 @@ GET /api/health
 }
 ```
 
-### Kullanım amacı
+The endpoint verifies that the FastAPI application can respond. It does not perform a NASA POWER request.
 
-Frontend ve geliştiriciler backend servisinin çalışıp çalışmadığını bu adres üzerinden kontrol eder.
+## 5. Crop Catalogue Endpoint
 
----
-
-## 5. Ürün Listesi
-
-### İstek
+### Request
 
 ```http
 GET /api/crops
 ```
 
-### Başarılı cevap
+### Successful response shape
 
 ```json
 {
   "crops": [
     {
       "id": "wheat",
-      "name": "Buğday"
+      "name": "Buğday",
+      "family": "Poaceae",
+      "is_legume": false,
+      "growing_season": ["autumn", "winter"],
+      "water_need": "medium",
+      "suitable_soils": ["loamy", "clay"],
+      "soil_notes": [],
+      "temperature_range_c": {
+        "min": 10,
+        "max": 24
+      },
+      "absolute_temperature_range_c": {
+        "min": 3,
+        "max": 32
+      },
+      "temperature_notes": [],
+      "annual_precipitation_range_mm": {
+        "min": 350,
+        "max": 900
+      },
+      "rotation": {
+        "minimum_return_years": 2,
+        "avoid_continuous_cropping": true,
+        "example_rotations": [["wheat", "chickpea"]],
+        "disease_groups": [],
+        "notes": []
+      },
+      "sources": [
+        {
+          "title": "Source title",
+          "url": "https://example.org/source",
+          "supports": ["temperature_range_c"]
+        }
+      ]
     }
   ]
 }
 ```
 
-`GET /api/crops`, frontend'in ürün seçim alanlarında kullanacağı hafif bir listedir. Her ürün için yalnızca
-`id` ve `name` döndürür; rotasyon kuralları, bilimsel notlar ve kaynaklar API cevabına eklenmez.
+Unlike an earlier lightweight draft, the final endpoint returns the validated full crop objects used by the application.
 
-### `/api/crops` cevap alanları
+### Crop object fields
 
-| Alan | Tip | Açıklama |
+| Field | Type | Contract |
 |---|---|---|
-| `id` | string | Ürünün kod içinde kullanılan benzersiz kimliği |
-| `name` | string | Kullanıcıya gösterilecek ürün adı |
+| `id` | string | Unique API identifier |
+| `name` | string | Localized display name |
+| `family` | string | Botanical family |
+| `is_legume` | boolean | Whether the crop is a legume |
+| `growing_season` | string[] | One or more of `spring`, `summer`, `autumn`, `winter` |
+| `water_need` | string | `low`, `medium`, or `high` |
+| `suitable_soils` | string[] | One or more supported soil identifiers |
+| `soil_notes` | string[] | Source-supported drainage and soil notes |
+| `temperature_range_c` | object | General optimum range with finite `min < max` |
+| `absolute_temperature_range_c` | object | General outer range with finite `min < max` |
+| `temperature_notes` | string[] | Crop-stage temperature notes |
+| `annual_precipitation_range_mm` | object | Annual range with finite `min < max` |
+| `rotation` | object | Return interval, continuous-cropping, disease, and example-rotation rules |
+| `sources` | object[] | Source title, URL, and supported fields |
 
-### `backend/data/crops.json` iç veri şeması
+The root of `backend/data/crops.json` is a JSON list. Unsupported numeric values are not guessed. A missing source-supported value is represented by `null` where the schema permits it, and the limitation must be explained.
 
-`backend/data/crops.json` dosyasının kök yapısı doğrudan bir JSON listesidir. Rotasyon modülü bu dosyayı
-doğrudan okuyarak ayrıntılı ürün verilerini kullanır. Backend ana akışı, `/api/crops` cevabını oluştururken
-her nesneden yalnızca `id` ve `name` alanlarını seçer.
-
-Her ürün nesnesinde aşağıdaki alanlar bulunur:
-
-| Alan | Tip | Açıklama |
-|---|---|---|
-| `id` | string | Ürünün benzersiz ve API genelinde kullanılan kimliği |
-| `name` | string | Kullanıcıya gösterilecek Türkçe ürün adı |
-| `family` | string | Bitkinin botanik ailesi |
-| `is_legume` | boolean | Ürünün baklagil olup olmadığı |
-| `growing_season` | string listesi | Ürünün yetiştirildiği dönemler: `spring`, `summer`, `autumn`, `winter` |
-| `water_need` | string | `low`, `medium` veya `high` |
-| `suitable_soils` | string listesi | Sözleşmedeki standart toprak kodlarından uygun olanlar |
-| `soil_notes` | string listesi | Drenaj, göllenme ve toprak yapısıyla ilgili kaynaklı ayrıntılar |
-| `temperature_range_c` | object | Genel ekolojik optimum sıcaklığın `min` ve `max` değerleri |
-| `absolute_temperature_range_c` | object | Genel ekolojik dış sıcaklık sınırlarının `min` ve `max` değerleri |
-| `temperature_notes` | string listesi | Ekim, çimlenme veya gelişim dönemlerine özgü sıcaklık açıklamaları |
-| `annual_precipitation_range_mm` | object | Önerilen yıllık yağışın `min` ve `max` değerleri |
-| `rotation` | object | Ürün tekrarı, rotasyon örnekleri, ortak hastalık grupları ve açıklamalar |
-| `sources` | object listesi | Ürün bilgisinin kaynakları ve her kaynağın desteklediği alanlar |
-
-`temperature_range_c`, iklim uygunluğu puanlanırken kullanılan optimum aralıktır.
-`absolute_temperature_range_c`, kısa süreli iklim uçlarının risk olarak açıklanmasına yardım eder; tek başına
-kesin ürün eleme ölçütü değildir. Birkaç yıllık dönemin mutlak minimum veya maksimum değeri doğrudan genel
-uygunsuzluk kararı üretmez. Mümkün olduğunda yetişme dönemine denk gelen aylık iklim özeti kullanılır.
-
-`rotation` nesnesinin alanları:
-
-| Alan | Tip | Açıklama |
-|---|---|---|
-| `minimum_return_years` | integer veya null | Kaynakta doğrulanmışsa ürünün aynı tarlaya dönüşü için alt sınır |
-| `avoid_continuous_cropping` | boolean | Ürünün arka arkaya yetiştirilmesinden kaçınılması gerekip gerekmediği |
-| `example_rotations` | string listelerinin listesi | Kaynaklarda verilen ve desteklenen ürün kimliklerine dönüştürülen örnekler |
-| `disease_groups` | string listesi | Ürünler arasında ortak hastalık/konukçu riskini eşleştiren grup kodları |
-| `notes` | string listesi | Rotasyonun geçerlilik koşulları ve bilimsel sınırlamaları |
-
-`sources` içindeki her nesne `title`, `url` ve `supports` alanlarını içerir. `supports`, ilgili kaynağın hangi
-ürün alanlarını desteklediğini gösterir. Doğrulanamayan sayısal bir değer tahmin edilmez; gerektiğinde `null`
-kullanılır ve sınırlama sonuçta açıklanır.
-
-Şu an desteklenen ürün kimlikleri:
+Supported crop identifiers are:
 
 - `wheat`
 - `barley`
@@ -150,28 +154,23 @@ kullanılır ve sınırlama sonuçta açıklanır.
 - `processing_tomato`
 - `lentil`
 
-`fallow` bir ürün değildir ve `crops.json` içine eklenmez. Yalnızca `previous_crop` için özel arazi durumu
-olarak kullanılabilir.
+`fallow` is not a crop and is not stored as an entry in `crops.json`. It is a special field state accepted only as `previous_crop`.
 
----
+## 6. Analysis Request
 
-## 6. Analiz İsteği
-
-### İstek
+### Request
 
 ```http
 POST /api/analyze
 Content-Type: application/json
 ```
 
-### İstek gövdesi
+### Normal user-flow example
 
 ```json
 {
   "latitude": 40.195,
   "longitude": 29.06,
-  "start_date": "2021-01-01",
-  "end_date": "2025-12-31",
   "previous_crop": "wheat",
   "current_crop": "chickpea",
   "next_crop": "sunflower",
@@ -182,80 +181,54 @@ Content-Type: application/json
 }
 ```
 
-### Alan kuralları
+### Request fields
 
-| Alan | Tip | Kural |
-|---|---|---|
-| `latitude` | number | `-90` ile `90` arasında olmalı |
-| `longitude` | number | `-180` ile `180` arasında olmalı |
-| `start_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2021-01-01` kullanılır |
-| `end_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2025-12-31` kullanılır |
-| `previous_crop` | string | `crops.json` içindeki ürün kimliklerinden biri veya özel `fallow` değeri olmalı |
-| `current_crop` | string | Kullanıcının şimdi ekmek veya dikmek istediği ürünün `crops.json` içindeki kimliği olmalı |
-| `next_crop` | string | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği olmalı |
-| `soil_type` | string | `sandy`, `loamy`, `clay` veya `silty` |
-| `priority` | string | `balanced`, `water_saving` veya `yield` |
-| `harvest_start_date` | string | Zorunlu planlanan hasat başlangıcı; `YYYY-MM-DD` formatında olmalı |
-| `harvest_end_date` | string | Zorunlu planlanan hasat bitişi; `YYYY-MM-DD` formatında olmalı |
+| Field | Type | Required | Contract |
+|---|---|---:|---|
+| `latitude` | number | yes | Between `-90` and `90` |
+| `longitude` | number | yes | Between `-180` and `180` |
+| `start_date` | date string | conditional | Optional climate-reference start; must be sent together with `end_date` |
+| `end_date` | date string | conditional | Optional climate-reference end; must be sent together with `start_date` |
+| `previous_crop` | string | yes | Valid crop identifier or `fallow` |
+| `current_crop` | string | yes | Valid crop identifier; cannot be `fallow` |
+| `next_crop` | string | yes | Valid crop identifier; cannot be `fallow` |
+| `soil_type` | string | yes | `sandy`, `loamy`, `clay`, or `silty` |
+| `priority` | string | yes | `balanced`, `water_saving`, or `yield` |
+| `harvest_start_date` | date string | yes | Planned harvest-window start |
+| `harvest_end_date` | date string | yes | Planned harvest-window end |
 
-`start_date`, `end_date` tarihinden sonra olamaz.
+### Date rules
 
-Frontend tarihleri gönderirse `YYYY-MM-DD` biçimini kullanır. NASA servisi bu tarihleri NASA POWER isteğinde kullanılmak üzere `YYYYMMDD` biçimine dönüştürür. Tarihler gönderilmezse backend son beş tamamlanmış yıllık Bursa referans dönemi olan `2021-01-01`–`2025-12-31` aralığını otomatik kullanır.
+- `start_date` and `end_date` must be provided together or both omitted.
+- The climate-reference start cannot be after the climate-reference end.
+- The inclusive climate-reference range may contain at most 1,827 days.
+- When both climate-reference dates are omitted, the backend selects the latest five complete calendar years.
+- In 2026, the automatic period resolves to `2021-01-01` through `2025-12-31`.
+- The automatic period is rolling; the dates are examples of the 2026 result, not a permanently hard-coded contract.
+- Harvest start cannot be after harvest end.
+- The inclusive harvest window may contain at most 120 days.
 
-`start_date` ve `end_date` ürünlerin ekim veya hasat tarihleri değil, NASA iklim analiz dönemidir.
-Bu aralık, seçilen ürünün beş yıl boyunca yetiştirileceği anlamına gelmez. `previous_crop → current_crop → next_crop` alanları kesin ay veya yıl sürelerini değil, birbirini izleyen ekim dönemlerini temsil eder.
+`start_date` and `end_date` describe the historical climate-reference period. They do not mean that one crop is grown continuously for five years.
 
-`harvest_start_date` ve `harvest_end_date` kullanıcının planladığı hasat aralığıdır ve ikisi de zorunludur. Başlangıç bitişten sonra olamaz ve hasat aralığı en fazla 120 gün olabilir. Backend bu tarihlerin ay-gün ve süre bilgisini kullanarak 2021–2025 günlük kayıtlarındaki aynı tam tarihsel dönemleri karşılaştırır; bu işlem yeni bir NASA isteği oluşturmaz.
+`previous_crop -> current_crop -> next_crop` represents three consecutive planting decisions, not exact multi-year crop durations.
 
-Bursa koordinatları ve varsayılan `2021-01-01`–`2025-12-31` referans dönemi
-için repoyla birlikte sunulan doğrulanmış 1826 günlük tarihsel veri doğrudan
-kullanılır. Bu akış NASA'ya her ürün veya öncelik değişiminde yeniden istek
-göndermez. Başka konum veya desteklenmeyen tarih aralıklarında normal
-`cache → NASA → stale cache/fallback` akışı uygulanır.
+`harvest_start_date` and `harvest_end_date` represent the farmer's intended harvest window. The harvest analysis compares the same month-day window across the available historical seasons. It does not request future NASA observations and is not a weather forecast.
 
-`climate_result.summary.total_precipitation_mm`, `start_date` ile `end_date` arasındaki analiz döneminin
-toplam yağışıdır. Rotasyon modülü bu değeri `annual_precipitation_range_mm` ile karşılaştırmadan önce analiz
-süresini gün cinsinden hesaplar ve yıllık ortalamaya dönüştürür:
+### Bursa snapshot and request order
 
-```text
-analysis_years = period_days / 365.2425
-annual_precipitation_mm = total_precipitation_mm / analysis_years
-```
+For the Bursa reference coordinate and the 2021-2025 automatic period, the repository includes a verified 1,826-day historical NASA POWER snapshot. This avoids a repeated NASA request whenever only the crop, soil, priority, or harvest window changes.
 
-Bu nedenle rotasyon modülü toplam yağışı sabit olarak `5` değerine bölmez; analiz dönemi değiştiğinde aynı
-hesap çalışmaya devam eder.
+The data-source order is:
 
-Backend ana akışı, Kişi 3'ün ürettiği nesneyi değiştirmeden bir kopyasına aşağıdaki alanı ekler:
+1. valid fresh cache;
+2. bundled Bursa snapshot for the exact supported reference period;
+3. live NASA POWER request with bounded retry and concurrency control;
+4. valid stale cache if the live request fails;
+5. verified Bursa fallback when explicitly allowed and compatible.
 
-```json
-"metadata": {
-  "start_date": "2021-01-01",
-  "end_date": "2025-12-31",
-  "period_days": 1826
-}
-```
+## 7. Analysis Response
 
-`period_days` pozitif bir tam sayı olmalı ve `(end_date - start_date).days + 1` sonucuyla birebir
-eşleşmelidir. Rotasyon modülü bu tutarlılığı yeniden doğrular.
-
-`total_precipitation_mm` ve `data_completeness_percent` alanlarında boolean, `NaN`, pozitif sonsuzluk veya
-negatif sonsuzluk kabul edilmez. Veri tamlığı `0` ile `100` arasında olmalıdır. Veri tamlığı `%100` değerinden
-düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirmesinin eksik günlerden etkilenebileceğini
-`limitations` içinde belirtir.
-
-Ürün geçmişi ve planı için aşağıdaki kurallar uygulanır:
-
-- `previous_crop: "fallow"`, tarlanın nadasa bırakıldığı anlamına gelir ve bilinmeyen geçmişten ayrı değerlendirilir. `fallow`, `crops.json` içinde bir ürün kimliği değildir.
-- `current_crop`, `crops.json` içindeki geçerli bir ürün olmak zorundadır; `null` veya `fallow` olamaz.
-- `previous_crop` zorunludur; yalnızca `fallow` veya `crops.json` içindeki geçerli bir ürün olabilir.
-- `next_crop` zorunludur; `crops.json` içindeki geçerli bir ürün olabilir ve `fallow` olamaz.
-- Ürün kimliklerinin birbirine eşit olması istek doğrulama hatası değildir. Aynı ürünün tekrarı rotasyon modülü tarafından risk olarak değerlendirilir.
-
----
-
-## 7. Analiz Cevabı
-
-### Başarılı cevap
+### Top-level shape
 
 ```json
 {
@@ -266,10 +239,18 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
   },
   "source": {
     "name": "NASA POWER",
-    "mode": "live",
+    "mode": "demo",
     "time_standard": "LST",
+    "requested_start_date": "2021-01-01",
+    "requested_end_date": "2025-12-31",
     "start_date": "2021-01-01",
-    "end_date": "2025-12-31"
+    "end_date": "2025-12-31",
+    "last_complete_year": 2025,
+    "is_latest_complete_period": true,
+    "fallback_used": false,
+    "warnings": [
+      "Bursa 2021-2025 historical records bundled with the project were used."
+    ]
   },
   "summary": {
     "average_temperature_c": 14.1,
@@ -285,9 +266,7 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
     "level": "high",
     "score": 75,
     "reasons": [
-      "Geçerli yağış günlerinin %73.8 kadarı kuru gün olarak sınıflandırıldı.",
-      "En uzun kuru dönem 69 gün sürdü.",
-      "71 sıcak gün tespit edildi."
+      "A high share of valid precipitation days were classified as dry."
     ]
   },
   "monthly_climate": [
@@ -318,11 +297,7 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
   "planned_rotation_assessment": {
     "crop_id": "chickpea",
     "crop_name": "Nohut",
-    "rotation": [
-      "wheat",
-      "chickpea",
-      "sunflower"
-    ],
+    "rotation": ["wheat", "chickpea", "sunflower"],
     "scores": {
       "total": 76,
       "climate": 80,
@@ -330,12 +305,8 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
       "soil": 78,
       "rotation": 73
     },
-    "advantages": [
-      "Buğdaydan sonra farklı bir bitki ailesi kullanır."
-    ],
-    "risks": [
-      "Seçilen dönemde su stresi riski dikkate alınmalıdır."
-    ],
+    "advantages": [],
+    "risks": [],
     "limitations": []
   },
   "recommendations": [
@@ -343,11 +314,7 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
       "rank": 1,
       "crop_id": "barley",
       "crop_name": "Arpa",
-      "rotation": [
-        "wheat",
-        "barley",
-        "sunflower"
-      ],
+      "rotation": ["wheat", "barley", "sunflower"],
       "scores": {
         "total": 84,
         "climate": 82,
@@ -355,63 +322,66 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
         "soil": 78,
         "rotation": 86
       },
-      "advantages": [
-        "Buğdaydan sonra farklı bir bitki ailesi kullanır.",
-        "Su ihtiyacı görece düşüktür.",
-        "Seçilen toprak türüyle uyumludur."
-      ],
-      "risks": [
-        "Aşırı sıcak dönemlerde verim kaybı oluşabilir."
-      ]
+      "advantages": [],
+      "risks": []
     }
   ]
 }
 ```
 
-`monthly_climate` içindeki `average_temperature_c` ve `precipitation_mm`
-alanları `number` veya `null` olabilir. İlgili ayda bir metrik için hiç geçerli
-ölçüm yoksa alan `null` olur; geçerli ölçümlerin tamamı gerçek sıfırsa değer
-`0.0` olarak korunur. Veri boşluğunu gizlememek için ay listeden çıkarılmaz.
+User-facing crop names, reasons, warnings, advantages, risks, and limitations may be localized. Stable programmatic fields and identifiers remain language-independent.
 
-`harvest_period_climate`, planlanan hasat aralığının 2021–2025 verisindeki aynı tam tarihsel dönemlerini özetler. Alan bir hava tahmini değildir; tarihsel ortalama sıcaklık, maksimum sıcaklık, dönem başına yağış, yağışlı gün ve sıcak gün değerlerini içerir.
+### Source fields
 
-`planned_rotation_assessment`, kullanıcının `current_crop` olarak seçtiği ürünü zorunlu önceki ve sonraki ürünlerle birlikte değerlendirir.
-
-`recommendations`, `current_crop` yerine aynı ekim için kullanılabilecek alternatifleri içerir. Öneriler, kullanıcının seçtiği üründen sonraki sezon için değildir.
-
-Öneri kuralları:
-
-- `current_crop`, `recommendations` listesinde tekrar edilmez.
-- En fazla üç öneri döndürülür.
-- Uygun alternatif bulunamazsa `recommendations` boş liste olarak döndürülür.
-- Alternatif olabilmek için toplam puan en az `50` olmalıdır.
-- Alternatifler önce toplam puana göre azalan, eşit puanda `crop_id` değerine göre artan biçimde sıralanır.
-- `rank` değerleri `1` ile başlar ve listede kesintisiz ilerler.
-- Kullanıcının seçtiği plan riskli olsa bile `planned_rotation_assessment` döndürülür.
-- `previous_crop` değeri `fallow` olduğunda özel nadas durumu `rotation` listesinde korunabilir ve nadas kuralları uygulanır.
-- `minimum_return_years`, yalnızca `previous_crop → current_crop → next_crop` zinciriyle kesin doğrulanamıyorsa
-  sonuç ilgili kaynaklı kuralı `limitations` içinde açıklar. Bu sınırlama, arka arkaya aynı ürünün ayrıca risk
-  olarak işaretlenmesini engellemez.
-
----
-
-## 8. Kaynak Modları
-
-`source.mode` aşağıdaki değerlerden birini alır:
-
-| Değer | Açıklama |
+| Field | Contract |
 |---|---|
-| `live` | Veri doğrudan NASA POWER API üzerinden alınmıştır |
-| `cache` | Daha önce alınmış ve önbelleğe kaydedilmiş veri kullanılmıştır |
-| `demo` | NASA servisine ulaşılamadığı için demo verisi kullanılmıştır |
+| `mode` | `live`, `cache`, or `demo` |
+| `requested_start_date`, `requested_end_date` | Requested or automatically resolved reference period |
+| `start_date`, `end_date` | Period actually represented by the returned daily records |
+| `last_complete_year` | Last complete calendar year at request time |
+| `is_latest_complete_period` | Whether the actual period is the latest automatic five-year period |
+| `fallback_used` | Whether the requested data required a fallback period/source |
+| `warnings` | Human-readable source and fallback notes |
 
-Frontend kullanılan kaynak modunu kullanıcıya göstermelidir. Demo veri kullanılmışsa sonuç gerçek zamanlı NASA verisi gibi sunulmamalıdır.
+### Source modes
 
----
+| Mode | Meaning |
+|---|---|
+| `live` | Newly retrieved from the NASA POWER API |
+| `cache` | Previously retrieved valid records reused from cache |
+| `demo` | Bundled Bursa historical NASA POWER snapshot or controlled Bursa fallback |
 
-## 9. Normalize Edilmiş İklim Kaydı
+A `demo` mode with `fallback_used: false` means the supported bundled Bursa snapshot was intentionally reused. It does not indicate a failed request. A true fallback must be disclosed through `fallback_used` and `warnings`.
 
-NASA POWER cevabı analiz modülüne gönderilmeden önce aşağıdaki ortak yapıya dönüştürülür:
+### Monthly climate
+
+Each represented month remains in `monthly_climate`.
+
+- `average_temperature_c` and `precipitation_mm` are `number | null`.
+- If a month has no valid measurement for one metric, that metric is `null`.
+- If all valid measurements are real zeros, the result is `0.0`.
+- A month is not removed merely to hide a data gap.
+
+### Harvest-period climate
+
+`harvest_period_climate` summarizes the same planned calendar window across complete historical seasons. Each average may be `null` only when no valid measurement exists for that metric. `data_completeness_percent` remains visible.
+
+### Crop assessment and alternatives
+
+- `planned_rotation_assessment` always evaluates the selected `current_crop`.
+- `recommendations` contains alternatives for the same planned planting, not crops for the season after `current_crop`.
+- The selected `current_crop` never appears in `recommendations`.
+- At most three alternatives are returned.
+- An alternative must have a total score of at least `50`.
+- Alternatives are sorted by descending total score and then ascending `crop_id`.
+- `rank` starts at `1` and remains consecutive.
+- If no suitable alternative exists, `recommendations` is an empty list.
+- Repeated crops are not rejected at request validation; the repetition is evaluated as a rotation risk.
+- Rules that cannot be proven from only three consecutive crop selections are disclosed through `limitations`.
+
+## 8. Normalized Daily Climate Record
+
+NASA POWER data is normalized before climate analysis:
 
 ```json
 {
@@ -419,49 +389,42 @@ NASA POWER cevabı analiz modülüne gönderilmeden önce aşağıdaki ortak yap
   "temperature_c": 7.4,
   "temperature_min_c": 1.2,
   "temperature_max_c": 13.8,
-  "precipitation_mm": 0.6,
+  "precipitation_mm": 0.0,
   "relative_humidity_percent": 68.4,
   "root_zone_wetness": 0.57
 }
 ```
 
-Her gün için bir kayıt bulunur.
+| Field | Type and range |
+|---|---|
+| `date` | ISO date |
+| `temperature_c` | finite number or `null` |
+| `temperature_min_c` | finite number or `null` |
+| `temperature_max_c` | finite number or `null` |
+| `precipitation_mm` | finite number or `null` |
+| `relative_humidity_percent` | finite number from `0` to `100`, or `null` |
+| `root_zone_wetness` | finite number from `0` to `1`, or `null` |
 
-Eksik bir NASA değeri varsa `-999` gibi NASA dolgu değerleri kullanılmamalı, değer `null` yapılmalıdır.
+Rules:
 
-Örnek:
+- One record represents one date.
+- Missing dates and duplicate dates are validated.
+- NASA fill values such as `-999` are converted to `null`, never analyzed as observations.
+- `RH2M` and `GWETROOT` are enrichment fields. Their partial absence does not stop the core analysis.
+- `T2M`, `T2M_MIN`, `T2M_MAX`, and `PRECTOTCORR` are core fields.
+- If any one core field is missing for the entire analysis period, climate analysis raises `InsufficientClimateDataError`.
+- Real zero values are retained.
+- `backend/data/demo_climate.json` follows the same normalized-record contract.
 
-```json
-{
-  "date": "2021-01-02",
-  "temperature_c": null,
-  "temperature_min_c": null,
-  "temperature_max_c": null,
-  "precipitation_mm": 2.1,
-  "relative_humidity_percent": null,
-  "root_zone_wetness": null
-}
-```
+## 9. NASA POWER Request
 
-`RH2M` ve `GWETROOT` zenginleştirici parametrelerdir. Bu iki parametreden biri
-veya her ikisi bazı günlerde eksik olduğunda ilgili alan `null` yapılır; temel
-sıcaklık ve yağış analizi çalışmaya devam eder. `0` değeri otomatik olarak eksik
-sayılmaz. `T2M`, `T2M_MIN`, `T2M_MAX` ve `PRECTOTCORR` temel analiz
-parametreleridir.
-
-`backend/data/demo_climate.json` dosyası da aynı kayıt yapısını kullanmalıdır.
-
----
-
-## 10. NASA POWER İsteği
-
-Kullanılacak servis:
+Endpoint:
 
 ```text
 https://power.larc.nasa.gov/api/temporal/daily/point
 ```
 
-Kullanılacak temel parametreler:
+Parameters:
 
 ```text
 community=AG
@@ -470,105 +433,62 @@ format=JSON
 time-standard=LST
 ```
 
-Parametrelerin anlamları:
-
-| Parametre | Açıklama |
+| Parameter | Meaning |
 |---|---|
-| `T2M` | İki metre yükseklikteki ortalama sıcaklık |
-| `T2M_MIN` | Günlük minimum sıcaklık |
-| `T2M_MAX` | Günlük maksimum sıcaklık |
-| `PRECTOTCORR` | Düzeltilmiş günlük toplam yağış |
-| `RH2M` | İki metre yükseklikteki bağıl nem |
-| `GWETROOT` | Kök bölgesi toprak ıslaklığı |
+| `T2M` | Mean temperature at two metres |
+| `T2M_MIN` | Daily minimum temperature |
+| `T2M_MAX` | Daily maximum temperature |
+| `PRECTOTCORR` | Corrected daily total precipitation |
+| `RH2M` | Relative humidity at two metres |
+| `GWETROOT` | Root-zone soil wetness |
 
-NASA API’ye frontend doğrudan istek göndermeyecektir. NASA isteğini yalnızca backend gerçekleştirecektir.
+Only the backend calls NASA POWER. The browser never calls NASA POWER directly.
 
----
+The resilience policy uses:
 
-## 11. Prototip İklim Kuralları
+- a 30-second request timeout;
+- at most three attempts for retryable failures;
+- bounded exponential backoff and jitter;
+- bounded `Retry-After` handling;
+- a 35-second total retry budget;
+- at most four concurrent NASA requests;
+- in-flight de-duplication for equivalent requests;
+- a seven-day fresh-cache lifetime.
 
-Hackathon prototipinde aşağıdaki başlangıç kuralları kullanılacaktır:
+## 10. Prototype Climate Rules
 
-- Günlük yağış `1 mm` değerinden düşükse gün, kurak gün olarak sayılır.
-- Günlük maksimum sıcaklık `35 °C` veya üzerindeyse gün, sıcak gün olarak sayılır.
-- Risk skoru `0–33` arasındaysa risk seviyesi `low` olur.
-- Risk skoru `34–66` arasındaysa risk seviyesi `medium` olur.
-- Risk skoru `67–100` arasındaysa risk seviyesi `high` olur.
+- A day with precipitation below `1 mm` is classified as dry.
+- A day with maximum temperature greater than or equal to `35 °C` is classified as hot.
+- Risk score `0-33` maps to `low`.
+- Risk score `34-66` maps to `medium`.
+- Risk score `67-100` maps to `high`.
 
-Bu eşikler prototip varsayımlarıdır. Kullanıcıya bilimsel olarak kesin tarımsal tavsiyeler gibi sunulmamalıdır.
+These are transparent prototype thresholds, not universal agronomic laws.
 
----
+## 11. Internal Recommendation Contract
 
-## 12. Hata Cevapları
-
-Kontrollü backend hataları mümkün olduğunca aşağıdaki formatta dönmelidir:
+The backend creates an enriched copy of the climate-analysis result without mutating the original:
 
 ```json
 {
-  "detail": {
-    "code": "NASA_API_UNAVAILABLE",
-    "message": "NASA POWER verisine şu anda ulaşılamıyor."
+  "metadata": {
+    "start_date": "2021-01-01",
+    "end_date": "2025-12-31",
+    "period_days": 1826
   }
 }
 ```
 
-Kullanılabilecek hata kodları:
+`period_days` must be a positive integer equal to `(end_date - start_date).days + 1`.
 
-| HTTP kodu | Uygulama kodu | Açıklama |
-|---|---|---|
-| `400` | `INVALID_REQUEST` | İstek mantıksal olarak geçersiz |
-| `404` | `CROP_NOT_FOUND` | İstenen ürün bulunamadı |
-| `422` | `VALIDATION_ERROR` | Alan tipi veya değeri geçersiz |
-| `422` | `INVALID_CROP_SELECTION` | Ürün seçimi veya fallow kullanımı geçersiz |
-| `422` | `INVALID_RECOMMENDATION_INPUT` | Toprak veya öncelik seçimi geçersiz |
-| `422` | `INSUFFICIENT_CLIMATE_DATA` | Analiz için çekirdek iklim verisi yetersiz |
-| `502` | `NASA_API_UNAVAILABLE` | NASA POWER servisine ulaşılamadı |
-| `500` | `CLIMATE_ANALYSIS_ERROR` | Normalize iklim verisi analiz sözleşmesine uymadı |
-| `500` | `HARVEST_ANALYSIS_ERROR` | Hasat dönemi tarihsel iklim kayıtlarından üretilemedi |
-| `500` | `INVALID_CLIMATE_RESULT` | Rotasyon modülüne iletilen iklim sonucu geçersiz |
-| `500` | `CROP_DATA_ERROR` | Ürün veri dosyası okunamadı veya bozuk |
-| `500` | `RECOMMENDATION_ERROR` | Öneri üretiminde beklenmeyen modül hatası oluştu |
-| `500` | `INTERNAL_ERROR` | Beklenmeyen backend hatası |
+Total precipitation is annualized before comparison with crop annual-precipitation ranges:
 
-Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemelidir.
+```text
+analysis_years = period_days / 365.2425
+annual_precipitation_mm = total_precipitation_mm / analysis_years
+```
 
----
-
-## 13. Modüllerin Sorumlulukları
-
-### Frontend
-
-- Kullanıcıdan konum ve tarımsal tercihleri alır.
-- `POST /api/analyze` isteğini gönderir.
-- Harita, özet kartları, grafikler, riskler ve önerileri gösterir.
-- NASA API’ye doğrudan bağlanmaz.
-
-### NASA veri servisi
-
-- NASA POWER API isteğini gerçekleştirir.
-- NASA cevabını normalize edilmiş günlük kayıtlara dönüştürür.
-- Eksik değerleri temizler.
-- Gerektiğinde cache veya demo verisine geçer.
-
-### İklim analizi
-
-- Normalize edilmiş günlük kayıtları kullanır.
-- İklim özetini hesaplar.
-- Kurak günleri, sıcak günleri ve en uzun kurak dönemi bulur.
-- Risk skorunu ve risk nedenlerini üretir.
-- Aylık grafik verisini oluşturur.
-
-### Ürün rotasyonu
-
-- `backend/data/crops.json` dosyasındaki ayrıntılı ürün, iklim eşiği, toprak, rotasyon ve kaynak alanlarını doğrudan okur.
-- Kullanıcının zorunlu önceki, mevcut ve sonraki ürününü; toprak türünü ve önceliğini kullanır.
-- İklim analizi sonuçlarını değerlendirir.
-- Kullanıcının seçtiği `previous_crop → current_crop → next_crop` planını değerlendirir.
-- `current_crop` yerine kullanılabilecek ürün adaylarını puanlar.
-- En fazla üç sıralanmış ve açıklanabilir alternatif öneri üretir.
-- Kişi 3'ün ürettiği iklim sonucu alanlarını değiştirmez ve ham NASA verisini yeniden analiz etmez.
-
-Rotasyon modülünün ana giriş noktası aşağıdaki imzayı kullanacaktır:
+The recommendation entry point is:
 
 ```python
 def recommend_rotations(
@@ -583,63 +503,100 @@ def recommend_rotations(
     ...
 ```
 
-Fonksiyon kendisine verilen `climate_result` sözlüğünü değiştirmez. Yalnızca birleşik API cevabına eklenecek
-`planned_rotation_assessment` ve `recommendations` alanlarını yeni bir sözlük içinde döndürür. Puanlamada
-kullanılan ortalama, minimum ve maksimum sıcaklık alanları da boolean olmayan sonlu sayılar olarak doğrulanır.
+The internal function supports optional previous/next values, while the public `AnalyzeRequest` currently requires all three crop selections. The function does not mutate `climate_result` and returns a new dictionary containing `planned_rotation_assessment` and `recommendations`.
 
-Parametreler yalnızca isimleriyle verilmelidir. Rotasyon modülünün hata sınıfları:
+The module's exception hierarchy is:
 
-| Hata | Anlamı |
-|---|---|
-| `RecommendationError` | Bütün rotasyon modülü hatalarının temel sınıfı |
-| `InvalidRecommendationInputError` | Geçersiz `soil_type`, `priority` veya diğer kullanıcı girdileri |
-| `InvalidCropSelectionError` | Bilinmeyen ürün veya yanlış alanda kullanılan `fallow` |
-| `InvalidClimateResultError` | Eksik/geçersiz iklim özeti, tarih aralığı veya toplam yağış |
-| `CropDataError` | `crops.json` dosyasının okunamaması veya temel yapısının bozuk olması |
+```text
+RecommendationError
+|-- InvalidRecommendationInputError
+|   `-- InvalidCropSelectionError
+|-- InvalidClimateResultError
+`-- CropDataError
+```
 
-`InvalidCropSelectionError`, `InvalidRecommendationInputError` sınıfından; diğer özel hata sınıfları ise
-doğrudan `RecommendationError` sınıfından türer. Böylece backend bütün rotasyon hatalarını
-`RecommendationError`, bütün kullanıcı girdisi hatalarını ise `InvalidRecommendationInputError` üzerinden
-yakalayabilir.
+## 12. Error Responses
 
-Rotasyon modülü yeni bir harici paket gerektirmez; `json`, `pathlib` ve `datetime` Python standart
-kütüphanelerini kullanır.
+Controlled application errors use:
 
-### Backend ana akışı
+```json
+{
+  "detail": {
+    "code": "NASA_API_UNAVAILABLE",
+    "message": "NASA POWER data is currently unavailable."
+  }
+}
+```
 
-- İstek doğrulamasını gerçekleştirir.
-- NASA servisini çağırır.
-- İklim analizi ve öneri modüllerini çağırır.
-- Sonuçları bu dosyada belirtilen API cevabında birleştirir.
+| HTTP status | Application code | Meaning |
+|---:|---|---|
+| `422` | FastAPI validation detail | Invalid field type, missing field, extra field, range, or date relationship |
+| `422` | `NASA_VALIDATION_ERROR` | Invalid NASA request parameters |
+| `422` | `INSUFFICIENT_CLIMATE_DATA` | A core climate field is absent for the complete period |
+| `422` | `INVALID_CROP_SELECTION` | Unknown crop or invalid `fallow` use |
+| `422` | `INVALID_RECOMMENDATION_INPUT` | Invalid recommendation input |
+| `502` | `NASA_*` service code | NASA timeout, connection, rate-limit, response, or availability failure with no valid fallback |
+| `500` | `CLIMATE_ANALYSIS_ERROR` | Normalized climate records violate the analysis contract |
+| `500` | `HARVEST_ANALYSIS_ERROR` | Historical harvest-window analysis cannot be produced |
+| `500` | `INVALID_CLIMATE_RESULT` | Climate result supplied to recommendation is invalid |
+| `500` | `CROP_DATA_ERROR` | Crop data cannot be read or validated |
+| `500` | `RECOMMENDATION_ERROR` | Unexpected recommendation-module failure |
 
----
+The frontend must show a concise user-facing message and must not expose a Python traceback or raw internal exception.
 
-## 14. Dosya Sahipliği
+## 13. Module Responsibilities
 
-| Alan | Sorumlu dal |
-|---|---|
-| `frontend/` | `frontend` |
-| `backend/main.py` | `nasa-data` |
-| `backend/models.py` | `nasa-data` |
-| `backend/nasa_service.py` | `nasa-data` |
-| `backend/data/demo_climate.json` | `nasa-data` |
-| `backend/climate_analysis.py` | `climate-analysis` |
-| `backend/recommendation.py` | `rotation-engine` |
-| `backend/data/crops.json` | `rotation-engine` |
-| İlgili test dosyaları | İlgili modülün sorumlu dalı |
+### Frontend
 
-Ortak dosyalar ekip koordinasyonu olmadan değiştirilmemelidir.
+- Collects location and agricultural planning inputs.
+- Calls `GET /api/crops` and `POST /api/analyze`.
+- Displays source information, warnings, climate evidence, harvest-window conditions, crop assessment, and alternatives.
+- Never calls NASA POWER directly.
 
----
+### NASA data layer
 
-## 15. Sözleşme Değişikliği
+- Builds and sends NASA POWER requests.
+- Normalizes NASA records.
+- Converts missing/fill values safely.
+- Applies retry, concurrency, cache, bundled-snapshot, and fallback policies.
 
-Bu dosyada belirtilen alan adları veya veri yapıları geliştirmenin ortasında tek taraflı olarak değiştirilmemelidir.
+### Climate analysis
 
-Değişiklik gerekirse:
+- Validates normalized daily records.
+- Produces climate summary, dry/hot indicators, risk score, reasons, and monthly series.
+- Performs no network request.
 
-1. Ekip üyeleri bilgilendirilir.
-2. Frontend ve backend üzerindeki etkisi değerlendirilir.
-3. `CONTRACTS.md` güncellenir.
-4. Etkilenen modüller aynı sözleşmeye göre güncellenir.
-5. Değişiklik pull request açıklamasında belirtilir.
+### Harvest-window analysis
+
+- Maps the planned inclusive window to the same month-day span in each complete historical season.
+- Produces transparent temperature, precipitation, rainy-day, hot-day, and completeness statistics.
+- Performs no future-weather forecast.
+
+### Crop recommendation
+
+- Reads validated crop, water, soil, rotation, and source fields from `crops.json`.
+- Evaluates the selected crop plan.
+- Produces at most three ranked and explainable alternatives.
+- Does not mutate the climate-analysis result or reprocess raw NASA data.
+
+### FastAPI orchestration
+
+- Validates the public request.
+- Runs the climate pipeline.
+- Adds internal date metadata for recommendation.
+- Calls climate, harvest-window, and recommendation modules.
+- Validates and returns one combined response.
+
+## 14. Contract Changes
+
+A shared field or structure must not be changed unilaterally.
+
+For every contract change:
+
+1. assess frontend, backend, data, and test impact;
+2. update this document;
+3. update all affected models and modules;
+4. add or update automated tests;
+5. describe the change in the pull request.
+
+The final contract is enforced by Pydantic response models and the automated test suite.
