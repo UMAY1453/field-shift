@@ -62,6 +62,18 @@ def test_build_request_params_for_one_day_in_bursa() -> None:
     }
 
 
+def test_build_request_params_accepts_1827_day_five_year_period() -> None:
+    params = build_nasa_request_params(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2024-01-01",
+        end_date="2028-12-31",
+    )
+
+    assert params["start"] == "20240101"
+    assert params["end"] == "20281231"
+
+
 def test_build_request_params_rejects_invalid_input() -> None:
     with pytest.raises(ValueError):
         build_nasa_request_params(
@@ -614,6 +626,35 @@ def test_committed_bursa_demo_covers_2021_through_2025() -> None:
 
 
 @pytest.mark.asyncio
+async def test_prefers_bundled_bursa_data_for_default_reference_period(
+    tmp_path,
+) -> None:
+    attempts = 0
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        return _successful_payload()
+
+    result = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2025-12-31",
+        cache_dir=tmp_path,
+        demo_path=DEFAULT_DEMO_PATH,
+        fetcher=fetcher,
+    )
+
+    assert result.mode == "demo"
+    assert len(result.daily_records) == 1826
+    assert result.daily_records[0]["date"] == "2021-01-01"
+    assert result.daily_records[-1]["date"] == "2025-12-31"
+    assert result.warnings
+    assert attempts == 0
+
+
+@pytest.mark.asyncio
 async def test_uses_bursa_demo_when_nasa_and_cache_fail(tmp_path) -> None:
     demo_path = tmp_path / "demo.json"
     records = normalize_nasa_daily_data(_successful_payload())
@@ -643,6 +684,69 @@ async def test_uses_bursa_demo_when_nasa_and_cache_fail(tmp_path) -> None:
     assert result.mode == "demo"
     assert result.daily_records == records
     assert result.warnings
+
+
+@pytest.mark.asyncio
+async def test_automatic_period_falls_back_to_verified_bursa_period(
+    tmp_path,
+) -> None:
+    async def failing_fetcher(**kwargs) -> dict:
+        raise NasaServiceError(
+            "NASA_API_UNAVAILABLE",
+            "unavailable",
+            status_code=503,
+        )
+
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    result = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2022-01-01",
+        end_date="2026-12-31",
+        cache_dir=tmp_path,
+        demo_path=DEFAULT_DEMO_PATH,
+        fetcher=failing_fetcher,
+        sleep=fake_sleep,
+        allow_verified_bursa_fallback=True,
+    )
+
+    assert result.mode == "demo"
+    assert result.start_date == datetime(2021, 1, 1).date()
+    assert result.end_date == datetime(2025, 12, 31).date()
+    assert result.fallback_used is True
+    assert result.daily_records[0]["date"] == "2021-01-01"
+    assert result.daily_records[-1]["date"] == "2025-12-31"
+    assert "2022-01-01" in result.warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_custom_period_does_not_switch_to_different_fallback_period(
+    tmp_path,
+) -> None:
+    async def failing_fetcher(**kwargs) -> dict:
+        raise NasaServiceError(
+            "NASA_API_UNAVAILABLE",
+            "unavailable",
+            status_code=503,
+        )
+
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    with pytest.raises(NasaServiceError, match="unavailable"):
+        await get_climate_data(
+            latitude=40.195,
+            longitude=29.06,
+            start_date="2022-01-01",
+            end_date="2026-12-31",
+            cache_dir=tmp_path,
+            demo_path=DEFAULT_DEMO_PATH,
+            fetcher=failing_fetcher,
+            sleep=fake_sleep,
+            allow_verified_bursa_fallback=False,
+        )
 
 
 @pytest.mark.asyncio

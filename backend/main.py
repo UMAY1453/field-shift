@@ -12,6 +12,10 @@ from backend.climate_analysis import (
     InsufficientClimateDataError,
 )
 from backend.climate_pipeline import run_climate_pipeline
+from backend.harvest_analysis import (
+    HarvestAnalysisError,
+    analyze_harvest_period,
+)
 from backend.models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -35,6 +39,7 @@ from backend.recommendation import (
     load_crops,
     recommend_rotations,
 )
+from backend.reference_period import get_latest_complete_reference_period
 
 
 app = FastAPI(
@@ -111,6 +116,18 @@ async def handle_nasa_service_error(
         status_code=status_code,
         code=error.code,
         message=error.message,
+    )
+
+
+@app.exception_handler(HarvestAnalysisError)
+async def handle_harvest_analysis_error(
+    _request: Request,
+    error: HarvestAnalysisError,
+) -> JSONResponse:
+    return _error_response(
+        status_code=500,
+        code="HARVEST_ANALYSIS_ERROR",
+        message=str(error),
     )
 
 
@@ -209,14 +226,21 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         longitude=request.longitude,
         start_date=request.start_date,
         end_date=request.end_date,
+        allow_verified_bursa_fallback=(
+            request.uses_automatic_reference_period
+        ),
     )
     climate_result = pipeline_result.analysis.model_dump(mode="json")
-    period_days = (request.end_date - request.start_date).days + 1
+    actual_start_date = (
+        pipeline_result.source.start_date or request.start_date
+    )
+    actual_end_date = pipeline_result.source.end_date or request.end_date
+    period_days = (actual_end_date - actual_start_date).days + 1
     enriched_climate_result = {
         **climate_result,
         "metadata": {
-            "start_date": request.start_date.isoformat(),
-            "end_date": request.end_date.isoformat(),
+            "start_date": actual_start_date.isoformat(),
+            "end_date": actual_end_date.isoformat(),
             "period_days": period_days,
         },
     }
@@ -230,6 +254,13 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         priority=request.priority,
         climate_result=enriched_climate_result,
     )
+    harvest_period_climate = await asyncio.to_thread(
+        analyze_harvest_period,
+        pipeline_result.source.daily_records,
+        harvest_start_date=request.harvest_start_date,
+        harvest_end_date=request.harvest_end_date,
+    )
+    latest_reference_period = get_latest_complete_reference_period()
 
     payload = {
         "location": {
@@ -241,10 +272,20 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             "name": "NASA POWER",
             "mode": pipeline_result.source.mode,
             "time_standard": "LST",
-            "start_date": request.start_date,
-            "end_date": request.end_date,
+            "requested_start_date": request.start_date,
+            "requested_end_date": request.end_date,
+            "start_date": actual_start_date,
+            "end_date": actual_end_date,
+            "last_complete_year": latest_reference_period.last_complete_year,
+            "is_latest_complete_period": (
+                actual_start_date == latest_reference_period.start_date
+                and actual_end_date == latest_reference_period.end_date
+            ),
+            "fallback_used": pipeline_result.source.fallback_used,
+            "warnings": pipeline_result.source.warnings,
         },
         **climate_result,
+        "harvest_period_climate": harvest_period_climate,
         **rotation_result,
     }
     try:

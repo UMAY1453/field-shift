@@ -36,6 +36,7 @@ async def run_climate_pipeline(
     longitude: float,
     start_date: date | str,
     end_date: date | str,
+    allow_verified_bursa_fallback: bool = False,
     climate_loader: ClimateLoader = get_climate_data,
     climate_analyzer: ClimateAnalyzer = analyze_climate,
 ) -> ClimatePipelineResult:
@@ -46,6 +47,7 @@ async def run_climate_pipeline(
         longitude=longitude,
         start_date=start_date,
         end_date=end_date,
+        allow_verified_bursa_fallback=allow_verified_bursa_fallback,
     )
 
     raw_analysis = await asyncio.to_thread(

@@ -176,7 +176,9 @@ Content-Type: application/json
   "current_crop": "chickpea",
   "next_crop": "sunflower",
   "soil_type": "loamy",
-  "priority": "water_saving"
+  "priority": "water_saving",
+  "harvest_start_date": "2027-08-15",
+  "harvest_end_date": "2027-09-15"
 }
 ```
 
@@ -188,11 +190,13 @@ Content-Type: application/json
 | `longitude` | number | `-180` ile `180` arasında olmalı |
 | `start_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2021-01-01` kullanılır |
 | `end_date` | string, isteğe bağlı | `YYYY-MM-DD` formatında olmalı; gönderilmezse `2025-12-31` kullanılır |
-| `previous_crop` | string veya null, isteğe bağlı | `crops.json` içindeki ürün kimliklerinden biri, özel `fallow` değeri veya `null` olmalı; gönderilmezse `null` kullanılır |
+| `previous_crop` | string | `crops.json` içindeki ürün kimliklerinden biri veya özel `fallow` değeri olmalı |
 | `current_crop` | string | Kullanıcının şimdi ekmek veya dikmek istediği ürünün `crops.json` içindeki kimliği olmalı |
-| `next_crop` | string veya null, isteğe bağlı | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği veya `null` olmalı; gönderilmezse `null` kullanılır |
+| `next_crop` | string | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği olmalı |
 | `soil_type` | string | `sandy`, `loamy`, `clay` veya `silty` |
 | `priority` | string | `balanced`, `water_saving` veya `yield` |
+| `harvest_start_date` | string | Zorunlu planlanan hasat başlangıcı; `YYYY-MM-DD` formatında olmalı |
+| `harvest_end_date` | string | Zorunlu planlanan hasat bitişi; `YYYY-MM-DD` formatında olmalı |
 
 `start_date`, `end_date` tarihinden sonra olamaz.
 
@@ -200,6 +204,14 @@ Frontend tarihleri gönderirse `YYYY-MM-DD` biçimini kullanır. NASA servisi bu
 
 `start_date` ve `end_date` ürünlerin ekim veya hasat tarihleri değil, NASA iklim analiz dönemidir.
 Bu aralık, seçilen ürünün beş yıl boyunca yetiştirileceği anlamına gelmez. `previous_crop → current_crop → next_crop` alanları kesin ay veya yıl sürelerini değil, birbirini izleyen ekim dönemlerini temsil eder.
+
+`harvest_start_date` ve `harvest_end_date` kullanıcının planladığı hasat aralığıdır ve ikisi de zorunludur. Başlangıç bitişten sonra olamaz ve hasat aralığı en fazla 120 gün olabilir. Backend bu tarihlerin ay-gün ve süre bilgisini kullanarak 2021–2025 günlük kayıtlarındaki aynı tam tarihsel dönemleri karşılaştırır; bu işlem yeni bir NASA isteği oluşturmaz.
+
+Bursa koordinatları ve varsayılan `2021-01-01`–`2025-12-31` referans dönemi
+için repoyla birlikte sunulan doğrulanmış 1826 günlük tarihsel veri doğrudan
+kullanılır. Bu akış NASA'ya her ürün veya öncelik değişiminde yeniden istek
+göndermez. Başka konum veya desteklenmeyen tarih aralıklarında normal
+`cache → NASA → stale cache/fallback` akışı uygulanır.
 
 `climate_result.summary.total_precipitation_mm`, `start_date` ile `end_date` arasındaki analiz döneminin
 toplam yağışıdır. Rotasyon modülü bu değeri `annual_precipitation_range_mm` ile karşılaştırmadan önce analiz
@@ -233,12 +245,10 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
 
 Ürün geçmişi ve planı için aşağıdaki kurallar uygulanır:
 
-- `previous_crop: null`, kullanıcının önceki ürünü bilmediği anlamına gelir. Önceki ürüne bağlı rotasyon değerlendirmesi yapılmaz.
 - `previous_crop: "fallow"`, tarlanın nadasa bırakıldığı anlamına gelir ve bilinmeyen geçmişten ayrı değerlendirilir. `fallow`, `crops.json` içinde bir ürün kimliği değildir.
-- `next_crop: null`, kullanıcının daha sonraki dönem için ürün planlamadığı anlamına gelir. Sonraki ürünle geçiş uyumu değerlendirilmez.
 - `current_crop`, `crops.json` içindeki geçerli bir ürün olmak zorundadır; `null` veya `fallow` olamaz.
-- `previous_crop` yalnızca `null`, `fallow` veya `crops.json` içindeki geçerli bir ürün olabilir.
-- `next_crop` yalnızca `null` veya `crops.json` içindeki geçerli bir ürün olabilir; `fallow` olamaz.
+- `previous_crop` zorunludur; yalnızca `fallow` veya `crops.json` içindeki geçerli bir ürün olabilir.
+- `next_crop` zorunludur; `crops.json` içindeki geçerli bir ürün olabilir ve `fallow` olamaz.
 - Ürün kimliklerinin birbirine eşit olması istek doğrulama hatası değildir. Aynı ürünün tekrarı rotasyon modülü tarafından risk olarak değerlendirilir.
 
 ---
@@ -287,6 +297,24 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
       "precipitation_mm": 205.8
     }
   ],
+  "harvest_period_climate": {
+    "planned_start_date": "2027-08-15",
+    "planned_end_date": "2027-09-15",
+    "period_days": 32,
+    "seasons_analyzed": 5,
+    "historical_windows": [
+      {
+        "start_date": "2021-08-15",
+        "end_date": "2021-09-15"
+      }
+    ],
+    "average_temperature_c": 23.4,
+    "average_maximum_temperature_c": 30.7,
+    "average_precipitation_mm_per_period": 28.6,
+    "average_rainy_days_per_period": 4.2,
+    "average_hot_days_per_period": 3.4,
+    "data_completeness_percent": 100.0
+  },
   "planned_rotation_assessment": {
     "crop_id": "chickpea",
     "crop_name": "Nohut",
@@ -345,7 +373,9 @@ alanları `number` veya `null` olabilir. İlgili ayda bir metrik için hiç geç
 ölçüm yoksa alan `null` olur; geçerli ölçümlerin tamamı gerçek sıfırsa değer
 `0.0` olarak korunur. Veri boşluğunu gizlememek için ay listeden çıkarılmaz.
 
-`planned_rotation_assessment`, kullanıcının `current_crop` olarak seçtiği ürünü; biliniyorsa önceki ve sonraki ürünlerle birlikte değerlendirir.
+`harvest_period_climate`, planlanan hasat aralığının 2021–2025 verisindeki aynı tam tarihsel dönemlerini özetler. Alan bir hava tahmini değildir; tarihsel ortalama sıcaklık, maksimum sıcaklık, dönem başına yağış, yağışlı gün ve sıcak gün değerlerini içerir.
+
+`planned_rotation_assessment`, kullanıcının `current_crop` olarak seçtiği ürünü zorunlu önceki ve sonraki ürünlerle birlikte değerlendirir.
 
 `recommendations`, `current_crop` yerine aynı ekim için kullanılabilecek alternatifleri içerir. Öneriler, kullanıcının seçtiği üründen sonraki sezon için değildir.
 
@@ -358,7 +388,6 @@ alanları `number` veya `null` olabilir. İlgili ayda bir metrik için hiç geç
 - Alternatifler önce toplam puana göre azalan, eşit puanda `crop_id` değerine göre artan biçimde sıralanır.
 - `rank` değerleri `1` ile başlar ve listede kesintisiz ilerler.
 - Kullanıcının seçtiği plan riskli olsa bile `planned_rotation_assessment` döndürülür.
-- `previous_crop` veya `next_crop` değeri `null` olduğunda bu bilinmeyen değer `rotation` listesine eklenmez ve değerlendirilemeyen konu `limitations` içinde açıklanır.
 - `previous_crop` değeri `fallow` olduğunda özel nadas durumu `rotation` listesinde korunabilir ve nadas kuralları uygulanır.
 - `minimum_return_years`, yalnızca `previous_crop → current_crop → next_crop` zinciriyle kesin doğrulanamıyorsa
   sonuç ilgili kaynaklı kuralı `limitations` içinde açıklar. Bu sınırlama, arka arkaya aynı ürünün ayrıca risk
@@ -495,6 +524,7 @@ Kullanılabilecek hata kodları:
 | `422` | `INSUFFICIENT_CLIMATE_DATA` | Analiz için çekirdek iklim verisi yetersiz |
 | `502` | `NASA_API_UNAVAILABLE` | NASA POWER servisine ulaşılamadı |
 | `500` | `CLIMATE_ANALYSIS_ERROR` | Normalize iklim verisi analiz sözleşmesine uymadı |
+| `500` | `HARVEST_ANALYSIS_ERROR` | Hasat dönemi tarihsel iklim kayıtlarından üretilemedi |
 | `500` | `INVALID_CLIMATE_RESULT` | Rotasyon modülüne iletilen iklim sonucu geçersiz |
 | `500` | `CROP_DATA_ERROR` | Ürün veri dosyası okunamadı veya bozuk |
 | `500` | `RECOMMENDATION_ERROR` | Öneri üretiminde beklenmeyen modül hatası oluştu |
@@ -531,13 +561,12 @@ Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemel
 ### Ürün rotasyonu
 
 - `backend/data/crops.json` dosyasındaki ayrıntılı ürün, iklim eşiği, toprak, rotasyon ve kaynak alanlarını doğrudan okur.
-- Kullanıcının önceki ürününü, şimdi ekmek istediği ürünü, isteğe bağlı sonraki ürününü, toprak türünü ve önceliğini kullanır.
+- Kullanıcının zorunlu önceki, mevcut ve sonraki ürününü; toprak türünü ve önceliğini kullanır.
 - İklim analizi sonuçlarını değerlendirir.
 - Kullanıcının seçtiği `previous_crop → current_crop → next_crop` planını değerlendirir.
 - `current_crop` yerine kullanılabilecek ürün adaylarını puanlar.
 - En fazla üç sıralanmış ve açıklanabilir alternatif öneri üretir.
 - Kişi 3'ün ürettiği iklim sonucu alanlarını değiştirmez ve ham NASA verisini yeniden analiz etmez.
-- Eksik önceki veya sonraki ürün bilgisini hata olarak değerlendirmez; değerlendirilemeyen noktaları açıklar.
 
 Rotasyon modülünün ana giriş noktası aşağıdaki imzayı kullanacaktır:
 

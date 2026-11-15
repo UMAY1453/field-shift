@@ -39,7 +39,7 @@ NASA_FORMAT = "JSON"
 NASA_TIME_STANDARD = "LST"
 NASA_TIMEOUT_SECONDS = 30.0
 NASA_DEFAULT_FILL_VALUE = -999.0
-MAX_DATE_RANGE_DAYS = 1826
+MAX_DATE_RANGE_DAYS = 1827
 NASA_MAX_ATTEMPTS = 3
 NASA_MAX_BACKOFF_SECONDS = 8.0
 NASA_MAX_RETRY_AFTER_SECONDS = 10.0
@@ -55,6 +55,8 @@ DEFAULT_DEMO_PATH = PROJECT_ROOT / "backend" / "data" / "demo_climate.json"
 BURSA_DEMO_LATITUDE = 40.195
 BURSA_DEMO_LONGITUDE = 29.06
 BURSA_DEMO_COORDINATE_TOLERANCE = 0.01
+BURSA_DEMO_START_DATE = date(2021, 1, 1)
+BURSA_DEMO_END_DATE = date(2025, 12, 31)
 
 RETRYABLE_ERROR_CODES = {
     "NASA_RATE_LIMITED",
@@ -65,7 +67,7 @@ RETRYABLE_ERROR_CODES = {
 
 _NASA_REQUEST_SEMAPHORE = asyncio.Semaphore(NASA_MAX_CONCURRENT_REQUESTS)
 _IN_FLIGHT_REQUESTS: dict[
-    tuple[str, str, str],
+    tuple[str, str, str, str],
     asyncio.Task[ClimateDataResult],
 ] = {}
 
@@ -109,6 +111,9 @@ class ClimateDataResult:
     mode: Literal["live", "cache", "demo"]
     warnings: list[str] = field(default_factory=list)
     cache_key: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    fallback_used: bool = False
 
 
 def _parse_date(value: object, field_name: str) -> date:
@@ -634,6 +639,7 @@ async def _fetch_with_fallbacks(
     fetcher: NasaFetcher | None,
     sleep: SleepFunction,
     now: datetime | None,
+    allow_verified_bursa_fallback: bool,
 ) -> ClimateDataResult:
     """Canlı isteği yapar; başarısızlıkta eski cache ve demoyu dener."""
 
@@ -683,6 +689,8 @@ async def _fetch_with_fallbacks(
             mode="live",
             warnings=warnings,
             cache_key=cache_key,
+            start_date=_parse_date(start_date, "start_date"),
+            end_date=_parse_date(end_date, "end_date"),
         )
     except NasaServiceError as nasa_error:
         if nasa_error.code in {
@@ -710,6 +718,8 @@ async def _fetch_with_fallbacks(
                     "NASA POWER kullanılamadığı için eski cache verisi kullanıldı."
                 ],
                 cache_key=cache_key,
+                start_date=_parse_date(start_date, "start_date"),
+                end_date=_parse_date(end_date, "end_date"),
             )
 
         demo_records = await asyncio.to_thread(
@@ -728,7 +738,36 @@ async def _fetch_with_fallbacks(
                     "NASA POWER kullanılamadığı için Bursa demo verisi kullanıldı."
                 ],
                 cache_key=cache_key,
+                start_date=_parse_date(start_date, "start_date"),
+                end_date=_parse_date(end_date, "end_date"),
             )
+
+        if allow_verified_bursa_fallback:
+            verified_records = await asyncio.to_thread(
+                load_bursa_demo_records,
+                latitude=latitude,
+                longitude=longitude,
+                start_date=BURSA_DEMO_START_DATE,
+                end_date=BURSA_DEMO_END_DATE,
+                demo_path=demo_path,
+            )
+            if verified_records is not None:
+                requested_start = _parse_date(start_date, "start_date")
+                requested_end = _parse_date(end_date, "end_date")
+                return ClimateDataResult(
+                    daily_records=verified_records,
+                    mode="demo",
+                    warnings=[
+                        f"İstenen {requested_start.isoformat()}–"
+                        f"{requested_end.isoformat()} dönemi alınamadı; "
+                        "Bursa için doğrulanmış 2021-01-01–2025-12-31 "
+                        "dönemi kullanıldı."
+                    ],
+                    cache_key=cache_key,
+                    start_date=BURSA_DEMO_START_DATE,
+                    end_date=BURSA_DEMO_END_DATE,
+                    fallback_used=True,
+                )
 
         raise nasa_error
 
@@ -744,8 +783,9 @@ async def get_climate_data(
     fetcher: NasaFetcher | None = None,
     sleep: SleepFunction = asyncio.sleep,
     now: datetime | None = None,
+    allow_verified_bursa_fallback: bool = False,
 ) -> ClimateDataResult:
-    """Fresh cache, canlı NASA, stale cache ve Bursa demo sırasını yönetir."""
+    """Cache, hazır Bursa verisi, canlı NASA ve fallback sırasını yönetir."""
 
     request_params = build_nasa_request_params(
         latitude=latitude,
@@ -775,12 +815,42 @@ async def get_climate_data(
             daily_records=fresh_records,
             mode="cache",
             cache_key=cache_key,
+            start_date=_parse_date(start_date, "start_date"),
+            end_date=_parse_date(end_date, "end_date"),
         )
+
+    parsed_start = _parse_date(start_date, "start_date")
+    parsed_end = _parse_date(end_date, "end_date")
+    if (
+        parsed_start == BURSA_DEMO_START_DATE
+        and parsed_end == BURSA_DEMO_END_DATE
+    ):
+        bundled_records = await asyncio.to_thread(
+            load_bursa_demo_records,
+            latitude=latitude,
+            longitude=longitude,
+            start_date=parsed_start,
+            end_date=parsed_end,
+            demo_path=demo_path,
+        )
+        if bundled_records is not None:
+            return ClimateDataResult(
+                daily_records=bundled_records,
+                mode="demo",
+                warnings=[
+                    "Bursa 2021-2025 için repoyla birlikte sunulan "
+                    "hazır tarihsel veri kullanıldı."
+                ],
+                cache_key=cache_key,
+                start_date=parsed_start,
+                end_date=parsed_end,
+            )
 
     flight_key = (
         cache_key,
         str(cache_dir.resolve()),
         str(demo_path.resolve()),
+        str(allow_verified_bursa_fallback),
     )
     task = _IN_FLIGHT_REQUESTS.get(flight_key)
     if task is None:
@@ -797,6 +867,7 @@ async def get_climate_data(
                 fetcher=fetcher,
                 sleep=sleep,
                 now=now,
+                allow_verified_bursa_fallback=allow_verified_bursa_fallback,
             )
         )
         _IN_FLIGHT_REQUESTS[flight_key] = task

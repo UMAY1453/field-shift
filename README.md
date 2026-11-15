@@ -254,38 +254,47 @@ Ayrıntılı istek ve cevap yapıları için `CONTRACTS.md` dosyasına bakın.
   "current_crop": "chickpea",
   "next_crop": "sunflower",
   "soil_type": "loamy",
-  "priority": "water_saving"
+  "priority": "water_saving",
+  "harvest_start_date": "2027-08-15",
+  "harvest_end_date": "2027-09-15"
 }
 ```
 
-Normal kullanıcı akışında iklim tarihleri ile önceki ve sonraki ürün alanları
-gönderilmeyebilir. Bu durumda backend `2021-01-01`–`2025-12-31` iklim referans
-dönemini ve bilinmeyen rotasyon alanları için `null` değerini otomatik kullanır:
+Normal kullanıcı akışında iklim referans tarihleri gönderilmeyebilir. Backend
+otomatik olarak `2021-01-01`–`2025-12-31` iklim referans dönemini kullanır.
+Önceki, mevcut ve sonraki ürünlerle planlanan hasat başlangıç ve bitiş tarihleri
+zorunludur:
 
 ```json
 {
   "latitude": 40.195,
   "longitude": 29.06,
+  "previous_crop": "wheat",
   "current_crop": "corn",
+  "next_crop": "sunflower",
   "soil_type": "loamy",
-  "priority": "water_saving"
+  "priority": "water_saving",
+  "harvest_start_date": "2027-08-15",
+  "harvest_end_date": "2027-09-15"
 }
 ```
 
 İklim referans dönemi, ürünün bu süre boyunca kesintisiz yetiştirileceği
 anlamına gelmez. `previous_crop`, `current_crop` ve `next_crop` birbirini izleyen
-ekim dönemlerini temsil eder. Özel tarih aralıkları API ve teknik testler için
-gönderilmeye devam edilebilir.
+ekim dönemlerini temsil eder. Hasat tarihleri en fazla 120 günlük planlanan
+hasat aralığını belirtir. Backend bu aralığı, hazır 2021–2025 günlük verisindeki
+aynı tarihsel dönemlerle karşılaştırır; sonuç bir hava tahmini değildir.
 
-`previous_crop` bilinmiyorsa `null`, tarla nadasa bırakıldıysa `"fallow"`
-gönderilebilir. `next_crop` bilinmiyorsa `null` gönderilebilir. `current_crop`
-zorunludur.
+`previous_crop` zorunludur ve tarla nadasa bırakıldıysa `"fallow"` olabilir.
+`current_crop` ve `next_crop` zorunlu geçerli ürün kimlikleri olmalıdır.
 
 API cevabındaki `source.mode` alanı veri kaynağının durumunu gösterir:
 
 - `live`: Veri NASA POWER servisinden yeni alındı.
 - `cache`: Daha önce alınmış geçerli veri önbellekten kullanıldı.
-- `demo`: NASA servisine ulaşılamadığında Bursa demo verisi kullanıldı.
+- `demo`: Bursa 2021–2025 için repoyla birlikte sunulan hazır tarihsel veri
+  kullanıldı veya NASA servisine ulaşılamadığında Bursa fallback verisi
+  devreye girdi.
 
 Bu üç değer de kontrollü ve geçerli çalışma durumlarıdır.
 
