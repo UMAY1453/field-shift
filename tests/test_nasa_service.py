@@ -1,14 +1,25 @@
+import asyncio
+from datetime import datetime, timedelta, timezone
+import json
+
 import httpx
 import pytest
 
 from backend.nasa_service import (
+    DEFAULT_DEMO_PATH,
     NASA_DAILY_POINT_URL,
     NASA_PARAMETERS,
     NasaResponseError,
     NasaServiceError,
+    build_cache_key,
     build_nasa_request_params,
     fetch_nasa_daily_data,
+    fetch_nasa_daily_data_with_retry,
+    get_climate_data,
+    load_bursa_demo_records,
     normalize_nasa_daily_data,
+    read_cache_entry,
+    write_cache_entry,
 )
 
 
@@ -57,6 +68,14 @@ def test_build_request_params_rejects_invalid_input() -> None:
             longitude=29.06,
             start_date="2021-01-01",
             end_date="2021-01-01",
+        )
+
+    with pytest.raises(ValueError, match="en fazla 5 yıllık"):
+        build_nasa_request_params(
+            latitude=40.195,
+            longitude=29.06,
+            start_date="2020-01-01",
+            end_date="2025-12-31",
         )
 
     with pytest.raises(ValueError):
@@ -296,3 +315,372 @@ def test_normalization_rejects_empty_daily_data() -> None:
         normalize_nasa_daily_data(payload)
 
     assert error.value.code == "NASA_EMPTY_DATA"
+
+
+def test_cache_key_is_stable_and_request_specific() -> None:
+    first = build_cache_key(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-07",
+    )
+    same = build_cache_key(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-07",
+    )
+    different = build_cache_key(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-08",
+    )
+
+    assert first == same
+    assert first != different
+
+
+def test_writes_and_reads_fresh_cache_entry(tmp_path) -> None:
+    cache_key = "test-cache-key"
+    now = datetime(2026, 11, 15, tzinfo=timezone.utc)
+    records = normalize_nasa_daily_data(_successful_payload())
+
+    write_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        request_params={"latitude": 40.195},
+        daily_records=records,
+        now=now,
+    )
+
+    cached = read_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        now=now + timedelta(hours=1),
+    )
+
+    assert cached == records
+
+
+def test_ignores_stale_or_corrupt_cache_entry(tmp_path) -> None:
+    cache_key = "test-cache-key"
+    now = datetime(2026, 11, 15, tzinfo=timezone.utc)
+    records = normalize_nasa_daily_data(_successful_payload())
+
+    write_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        request_params={"latitude": 40.195},
+        daily_records=records,
+        now=now - timedelta(days=8),
+    )
+    assert read_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        now=now,
+    ) is None
+
+    cache_file = next(tmp_path.glob("*.json"))
+    cache_file.write_text("not-json", encoding="utf-8")
+    assert read_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        now=now,
+    ) is None
+
+
+@pytest.mark.asyncio
+async def test_retry_uses_retry_after_then_succeeds() -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise NasaServiceError(
+                "NASA_RATE_LIMITED",
+                "rate limited",
+                status_code=429,
+                retry_after_seconds=2,
+            )
+        return _successful_payload()
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    payload = await fetch_nasa_daily_data_with_retry(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        fetcher=fetcher,
+        sleep=fake_sleep,
+    )
+
+    assert payload == _successful_payload()
+    assert attempts == 2
+    assert delays == [2]
+
+
+@pytest.mark.asyncio
+async def test_retry_does_not_repeat_non_retryable_error() -> None:
+    attempts = 0
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        raise NasaServiceError(
+            "NASA_VALIDATION_ERROR",
+            "invalid",
+            status_code=422,
+        )
+
+    with pytest.raises(NasaServiceError) as error:
+        await fetch_nasa_daily_data_with_retry(
+            latitude=40.195,
+            longitude=29.06,
+            start_date="2021-01-01",
+            end_date="2021-01-01",
+            fetcher=fetcher,
+            sleep=lambda delay: None,
+        )
+
+    assert error.value.code == "NASA_VALIDATION_ERROR"
+    assert attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_first_request_is_live_and_second_uses_cache(tmp_path) -> None:
+    attempts = 0
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        return _successful_payload()
+
+    first = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        cache_dir=tmp_path,
+        fetcher=fetcher,
+    )
+    second = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        cache_dir=tmp_path,
+        fetcher=fetcher,
+    )
+
+    assert first.mode == "live"
+    assert second.mode == "cache"
+    assert first.daily_records == second.daily_records
+    assert attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_uses_stale_cache_when_nasa_is_unavailable(tmp_path) -> None:
+    now = datetime(2026, 11, 15, tzinfo=timezone.utc)
+    cache_key = build_cache_key(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+    )
+    records = normalize_nasa_daily_data(_successful_payload())
+    write_cache_entry(
+        cache_dir=tmp_path,
+        cache_key=cache_key,
+        request_params={},
+        daily_records=records,
+        now=now - timedelta(days=8),
+    )
+
+    async def failing_fetcher(**kwargs) -> dict:
+        raise NasaServiceError(
+            "NASA_API_UNAVAILABLE",
+            "unavailable",
+            status_code=503,
+        )
+
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    result = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        cache_dir=tmp_path,
+        fetcher=failing_fetcher,
+        sleep=fake_sleep,
+        now=now,
+    )
+
+    assert result.mode == "cache"
+    assert result.daily_records == records
+    assert result.warnings
+
+
+def test_loads_demo_only_for_bursa_and_complete_date_range(tmp_path) -> None:
+    demo_path = tmp_path / "demo.json"
+    records = normalize_nasa_daily_data(_successful_payload())
+    demo_path.write_text(json.dumps(records), encoding="utf-8")
+
+    assert load_bursa_demo_records(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        demo_path=demo_path,
+    ) == records
+    assert load_bursa_demo_records(
+        latitude=39.93,
+        longitude=32.86,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        demo_path=demo_path,
+    ) is None
+
+
+def test_committed_bursa_demo_covers_2021_through_2025() -> None:
+    records = load_bursa_demo_records(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2025-12-31",
+        demo_path=DEFAULT_DEMO_PATH,
+    )
+
+    assert records is not None
+    assert len(records) == 1826
+    assert records[0]["date"] == "2021-01-01"
+    assert records[-1]["date"] == "2025-12-31"
+    assert all(
+        set(record)
+        == {
+            "date",
+            "temperature_c",
+            "temperature_min_c",
+            "temperature_max_c",
+            "precipitation_mm",
+            "relative_humidity_percent",
+            "root_zone_wetness",
+        }
+        for record in records
+    )
+
+
+@pytest.mark.asyncio
+async def test_uses_bursa_demo_when_nasa_and_cache_fail(tmp_path) -> None:
+    demo_path = tmp_path / "demo.json"
+    records = normalize_nasa_daily_data(_successful_payload())
+    demo_path.write_text(json.dumps(records), encoding="utf-8")
+
+    async def failing_fetcher(**kwargs) -> dict:
+        raise NasaServiceError(
+            "NASA_API_UNAVAILABLE",
+            "unavailable",
+            status_code=503,
+        )
+
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    result = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        cache_dir=tmp_path / "cache",
+        demo_path=demo_path,
+        fetcher=failing_fetcher,
+        sleep=fake_sleep,
+    )
+
+    assert result.mode == "demo"
+    assert result.daily_records == records
+    assert result.warnings
+
+
+@pytest.mark.asyncio
+async def test_concurrent_identical_requests_share_one_nasa_call(tmp_path) -> None:
+    attempts = 0
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        await asyncio.sleep(0.01)
+        return _successful_payload()
+
+    results = await asyncio.gather(
+        *[
+            get_climate_data(
+                latitude=40.195,
+                longitude=29.06,
+                start_date="2021-01-01",
+                end_date="2021-01-01",
+                cache_dir=tmp_path,
+                fetcher=fetcher,
+            )
+            for _ in range(5)
+        ]
+    )
+
+    assert attempts == 1
+    assert all(result.mode == "live" for result in results)
+    assert all(
+        result.daily_records == results[0].daily_records
+        for result in results
+    )
+
+
+@pytest.mark.asyncio
+async def test_rejects_live_response_with_missing_requested_day(tmp_path) -> None:
+    async def fetcher(**kwargs) -> dict:
+        return _successful_payload()
+
+    with pytest.raises(NasaResponseError) as error:
+        await get_climate_data(
+            latitude=40.195,
+            longitude=29.06,
+            start_date="2021-01-01",
+            end_date="2021-01-02",
+            cache_dir=tmp_path,
+            demo_path=tmp_path / "missing-demo.json",
+            fetcher=fetcher,
+        )
+
+    assert error.value.code == "NASA_INCOMPLETE_DATE_RANGE"
+
+
+@pytest.mark.asyncio
+async def test_validation_error_does_not_fall_back_to_demo(tmp_path) -> None:
+    demo_path = tmp_path / "demo.json"
+    records = normalize_nasa_daily_data(_successful_payload())
+    demo_path.write_text(json.dumps(records), encoding="utf-8")
+
+    async def invalid_fetcher(**kwargs) -> dict:
+        raise NasaServiceError(
+            "NASA_VALIDATION_ERROR",
+            "invalid request",
+            status_code=422,
+        )
+
+    with pytest.raises(NasaServiceError) as error:
+        await get_climate_data(
+            latitude=40.195,
+            longitude=29.06,
+            start_date="2021-01-01",
+            end_date="2021-01-01",
+            cache_dir=tmp_path / "cache",
+            demo_path=demo_path,
+            fetcher=invalid_fetcher,
+        )
+
+    assert error.value.code == "NASA_VALIDATION_ERROR"
