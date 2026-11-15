@@ -15,6 +15,9 @@ SoilType = Literal["sandy", "loamy", "clay", "silty"]
 Priority = Literal["balanced", "water_saving", "yield"]
 SourceMode = Literal["live", "cache", "demo"]
 RiskLevel = Literal["low", "medium", "high"]
+GrowingSeason = Literal["spring", "summer", "autumn", "winter"]
+WaterNeed = Literal["low", "medium", "high"]
+MAX_ANALYSIS_DAYS = 1826
 
 
 class ApiModel(BaseModel):
@@ -30,6 +33,52 @@ class ApiModel(BaseModel):
 class HealthResponse(ApiModel):
     status: Literal["ok"] = "ok"
     service: Literal["field-shift-api"] = "field-shift-api"
+
+
+class NumericRange(ApiModel):
+    min: float
+    max: float
+
+    @model_validator(mode="after")
+    def validate_order(self) -> "NumericRange":
+        if self.min >= self.max:
+            raise ValueError("Aralık minimumu maksimumdan küçük olmalıdır.")
+        return self
+
+
+class CropRotation(ApiModel):
+    minimum_return_years: int | None = Field(ge=1)
+    avoid_continuous_cropping: bool
+    example_rotations: list[list[str]]
+    disease_groups: list[str]
+    notes: list[str]
+
+
+class CropSource(ApiModel):
+    title: str = Field(min_length=1)
+    url: str = Field(min_length=1)
+    supports: list[str] = Field(min_length=1)
+
+
+class Crop(ApiModel):
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    family: str = Field(min_length=1)
+    is_legume: bool
+    growing_season: list[GrowingSeason] = Field(min_length=1)
+    water_need: WaterNeed
+    suitable_soils: list[SoilType] = Field(min_length=1)
+    soil_notes: list[str]
+    temperature_range_c: NumericRange
+    absolute_temperature_range_c: NumericRange
+    temperature_notes: list[str]
+    annual_precipitation_range_mm: NumericRange
+    rotation: CropRotation
+    sources: list[CropSource] = Field(min_length=1)
+
+
+class CropsResponse(ApiModel):
+    crops: list[Crop]
 
 
 class AnalyzeRequest(ApiModel):
@@ -49,6 +98,9 @@ class AnalyzeRequest(ApiModel):
             raise ValueError(
                 "Başlangıç tarihi, bitiş tarihinden sonra olamaz."
             )
+        period_days = (self.end_date - self.start_date).days + 1
+        if period_days > MAX_ANALYSIS_DAYS:
+            raise ValueError("Analiz dönemi en fazla 5 yıl olabilir.")
         if self.current_crop == "fallow" or self.next_crop == "fallow":
             raise ValueError(
                 "fallow yalnızca previous_crop alanında kullanılabilir."

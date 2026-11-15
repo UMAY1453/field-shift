@@ -5,6 +5,7 @@ import json
 import httpx
 import pytest
 
+import backend.nasa_service as nasa_service
 from backend.nasa_service import (
     DEFAULT_DEMO_PATH,
     NASA_DAILY_POINT_URL,
@@ -425,6 +426,39 @@ async def test_retry_uses_retry_after_then_succeeds() -> None:
 
 
 @pytest.mark.asyncio
+async def test_retry_after_is_capped() -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    async def fetcher(**kwargs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise NasaServiceError(
+                "NASA_RATE_LIMITED",
+                "rate limited",
+                status_code=429,
+                retry_after_seconds=120,
+            )
+        return _successful_payload()
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    await fetch_nasa_daily_data_with_retry(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        fetcher=fetcher,
+        sleep=fake_sleep,
+    )
+
+    assert attempts == 2
+    assert delays == [10]
+
+
+@pytest.mark.asyncio
 async def test_retry_does_not_repeat_non_retryable_error() -> None:
     attempts = 0
 
@@ -604,6 +638,39 @@ async def test_uses_bursa_demo_when_nasa_and_cache_fail(tmp_path) -> None:
         demo_path=demo_path,
         fetcher=failing_fetcher,
         sleep=fake_sleep,
+    )
+
+    assert result.mode == "demo"
+    assert result.daily_records == records
+    assert result.warnings
+
+
+@pytest.mark.asyncio
+async def test_total_retry_budget_falls_back_to_bursa_demo(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    demo_path = tmp_path / "demo.json"
+    records = normalize_nasa_daily_data(_successful_payload())
+    demo_path.write_text(json.dumps(records), encoding="utf-8")
+    monkeypatch.setattr(
+        nasa_service,
+        "NASA_TOTAL_RETRY_BUDGET_SECONDS",
+        0.001,
+    )
+
+    async def slow_fetcher(**kwargs) -> dict:
+        await asyncio.sleep(0.05)
+        return _successful_payload()
+
+    result = await get_climate_data(
+        latitude=40.195,
+        longitude=29.06,
+        start_date="2021-01-01",
+        end_date="2021-01-01",
+        cache_dir=tmp_path / "cache",
+        demo_path=demo_path,
+        fetcher=slow_fetcher,
     )
 
     assert result.mode == "demo"

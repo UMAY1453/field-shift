@@ -42,6 +42,8 @@ NASA_DEFAULT_FILL_VALUE = -999.0
 MAX_DATE_RANGE_DAYS = 1826
 NASA_MAX_ATTEMPTS = 3
 NASA_MAX_BACKOFF_SECONDS = 8.0
+NASA_MAX_RETRY_AFTER_SECONDS = 10.0
+NASA_TOTAL_RETRY_BUDGET_SECONDS = 35.0
 NASA_MAX_CONCURRENT_REQUESTS = 4
 CACHE_VERSION = 1
 CACHE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
@@ -428,7 +430,10 @@ async def fetch_nasa_daily_data_with_retry(
                 NASA_MAX_BACKOFF_SECONDS,
             )
             delay = (
-                exc.retry_after_seconds
+                min(
+                    exc.retry_after_seconds,
+                    NASA_MAX_RETRY_AFTER_SECONDS,
+                )
                 if exc.retry_after_seconds is not None
                 else exponential_delay + random.uniform(0, 0.25)
             )
@@ -633,15 +638,22 @@ async def _fetch_with_fallbacks(
     """Canlı isteği yapar; başarısızlıkta eski cache ve demoyu dener."""
 
     try:
-        async with _NASA_REQUEST_SEMAPHORE:
-            raw_payload = await fetch_nasa_daily_data_with_retry(
-                latitude=latitude,
-                longitude=longitude,
-                start_date=start_date,
-                end_date=end_date,
-                fetcher=fetcher,
-                sleep=sleep,
-            )
+        try:
+            async with asyncio.timeout(NASA_TOTAL_RETRY_BUDGET_SECONDS):
+                async with _NASA_REQUEST_SEMAPHORE:
+                    raw_payload = await fetch_nasa_daily_data_with_retry(
+                        latitude=latitude,
+                        longitude=longitude,
+                        start_date=start_date,
+                        end_date=end_date,
+                        fetcher=fetcher,
+                        sleep=sleep,
+                    )
+        except TimeoutError as exc:
+            raise NasaServiceError(
+                "NASA_REQUEST_TIMEOUT",
+                "NASA POWER toplam deneme süresi aşıldı.",
+            ) from exc
         records = normalize_nasa_daily_data(raw_payload)
         if not _records_cover_date_range(
             records,

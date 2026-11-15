@@ -170,8 +170,8 @@ Content-Type: application/json
 {
   "latitude": 40.195,
   "longitude": 29.06,
-  "start_date": "2025-11-08",
-  "end_date": "2026-11-07",
+  "start_date": "2021-01-01",
+  "end_date": "2025-12-31",
   "previous_crop": "wheat",
   "current_crop": "chickpea",
   "next_crop": "sunflower",
@@ -257,32 +257,33 @@ düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirme
     "name": "NASA POWER",
     "mode": "live",
     "time_standard": "LST",
-    "start_date": "2025-11-08",
-    "end_date": "2026-11-07"
+    "start_date": "2021-01-01",
+    "end_date": "2025-12-31"
   },
   "summary": {
-    "average_temperature_c": 15.8,
-    "minimum_temperature_c": -4.2,
-    "maximum_temperature_c": 38.1,
-    "total_precipitation_mm": 326.4,
-    "dry_days": 214,
-    "longest_dry_spell_days": 24,
-    "hot_days": 17,
-    "data_completeness_percent": 98.9
+    "average_temperature_c": 14.1,
+    "minimum_temperature_c": -16.2,
+    "maximum_temperature_c": 41.1,
+    "total_precipitation_mm": 3099.6,
+    "dry_days": 1347,
+    "longest_dry_spell_days": 69,
+    "hot_days": 71,
+    "data_completeness_percent": 100.0
   },
   "risk": {
-    "level": "medium",
-    "score": 58,
+    "level": "high",
+    "score": 75,
     "reasons": [
-      "Uzun kurak dönem tespit edildi.",
-      "Toplam yağış miktarı seçilen dönem için düşüktür."
+      "Geçerli yağış günlerinin %73.8 kadarı kuru gün olarak sınıflandırıldı.",
+      "En uzun kuru dönem 69 gün sürdü.",
+      "71 sıcak gün tespit edildi."
     ]
   },
   "monthly_climate": [
     {
-      "month": "2026-01",
-      "average_temperature_c": 2.4,
-      "precipitation_mm": 31.6
+      "month": "2021-01",
+      "average_temperature_c": 4.3,
+      "precipitation_mm": 205.8
     }
   ],
   "planned_rotation_assessment": {
@@ -384,7 +385,7 @@ NASA POWER cevabı analiz modülüne gönderilmeden önce aşağıdaki ortak yap
 
 ```json
 {
-  "date": "2026-01-01",
+  "date": "2021-01-01",
   "temperature_c": 7.4,
   "temperature_min_c": 1.2,
   "temperature_max_c": 13.8,
@@ -402,7 +403,7 @@ Eksik bir NASA değeri varsa `-999` gibi NASA dolgu değerleri kullanılmamalı,
 
 ```json
 {
-  "date": "2026-01-02",
+  "date": "2021-01-02",
   "temperature_c": null,
   "temperature_min_c": null,
   "temperature_max_c": null,
@@ -488,9 +489,14 @@ Kullanılabilecek hata kodları:
 | `400` | `INVALID_REQUEST` | İstek mantıksal olarak geçersiz |
 | `404` | `CROP_NOT_FOUND` | İstenen ürün bulunamadı |
 | `422` | `VALIDATION_ERROR` | Alan tipi veya değeri geçersiz |
+| `422` | `INVALID_CROP_SELECTION` | Ürün seçimi veya fallow kullanımı geçersiz |
+| `422` | `INVALID_RECOMMENDATION_INPUT` | Toprak veya öncelik seçimi geçersiz |
 | `422` | `INSUFFICIENT_CLIMATE_DATA` | Analiz için çekirdek iklim verisi yetersiz |
 | `502` | `NASA_API_UNAVAILABLE` | NASA POWER servisine ulaşılamadı |
 | `500` | `CLIMATE_ANALYSIS_ERROR` | Normalize iklim verisi analiz sözleşmesine uymadı |
+| `500` | `INVALID_CLIMATE_RESULT` | Rotasyon modülüne iletilen iklim sonucu geçersiz |
+| `500` | `CROP_DATA_ERROR` | Ürün veri dosyası okunamadı veya bozuk |
+| `500` | `RECOMMENDATION_ERROR` | Öneri üretiminde beklenmeyen modül hatası oluştu |
 | `500` | `INTERNAL_ERROR` | Beklenmeyen backend hatası |
 
 Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemelidir.
