@@ -152,3 +152,18 @@ export function useCurrentLocation() {
 export function invalidateMapSize() {
     mapInstance?.invalidateSize();
 }
+
+/**
+ * Seçilen konumu kaldırır ve haritayı başlangıç görünümüne döndürür.
+ */
+export function resetMapSelection() {
+    if (selectedMarker) {
+        selectedMarker.remove();
+        selectedMarker = null;
+    }
+
+    mapInstance?.setView(
+        DEFAULT_CENTER,
+        DEFAULT_ZOOM,
+    );
+}
