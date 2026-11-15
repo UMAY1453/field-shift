@@ -6,13 +6,19 @@ from pathlib import Path
 
 
 CROPS_PATH = Path(__file__).with_name("data") / "crops.json"
+ALLOWED_SOIL_TYPES = {"sandy", "loamy", "clay", "silty"}
+ALLOWED_PRIORITIES = {"balanced", "water_saving", "yield"}
 
 
 class RecommendationError(Exception):
     """Rotasyon modülündeki hataların temel sınıfı."""
 
 
-class InvalidCropSelectionError(RecommendationError):
+class InvalidRecommendationInputError(RecommendationError):
+    """Kullanıcıdan gelen öneri girdileri sözleşmeye uymadığında oluşur."""
+
+
+class InvalidCropSelectionError(InvalidRecommendationInputError):
     """İstek geçersiz veya desteklenmeyen bir ürün içerdiğinde oluşur."""
 
 
@@ -75,6 +81,35 @@ def validate_crop_selections(
             raise InvalidCropSelectionError(
                 "next_crop; null veya crops.json içindeki geçerli bir ürün olmalıdır."
             )
+
+
+def validate_recommendation_inputs(
+    *,
+    previous_crop: str | None,
+    current_crop: str,
+    next_crop: str | None,
+    soil_type: str,
+    priority: str,
+    crop_ids: set[str],
+) -> None:
+    """Ana öneri fonksiyonunun kullanıcı girdilerini birlikte doğrular."""
+
+    validate_crop_selections(
+        previous_crop,
+        current_crop,
+        next_crop,
+        crop_ids,
+    )
+
+    if soil_type not in ALLOWED_SOIL_TYPES:
+        raise InvalidRecommendationInputError(
+            "soil_type; sandy, loamy, clay veya silty olmalıdır."
+        )
+
+    if priority not in ALLOWED_PRIORITIES:
+        raise InvalidRecommendationInputError(
+            "priority; balanced, water_saving veya yield olmalıdır."
+        )
 
 
 def calculate_annual_precipitation_mm(climate_result: dict) -> float:

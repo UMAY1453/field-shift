@@ -3,12 +3,14 @@ import pytest
 from backend.recommendation import (
     InvalidClimateResultError,
     InvalidCropSelectionError,
+    InvalidRecommendationInputError,
     build_minimum_return_limitations,
     build_rotation_pairs,
     build_rotation_path,
     calculate_annual_precipitation_mm,
     load_crops,
     validate_crop_selections,
+    validate_recommendation_inputs,
 )
 
 
@@ -96,6 +98,44 @@ def test_validate_crop_selections_rejects_invalid_values(
             next_crop,
             {"wheat"},
         )
+
+
+def test_validate_recommendation_inputs_accepts_contract_values():
+    validate_recommendation_inputs(
+        previous_crop="fallow",
+        current_crop="wheat",
+        next_crop="chickpea",
+        soil_type="loamy",
+        priority="water_saving",
+        crop_ids={"wheat", "chickpea"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("soil_type", "priority", "message"),
+    [
+        ("peat", "balanced", "soil_type"),
+        ("loamy", "profit", "priority"),
+    ],
+)
+def test_validate_recommendation_inputs_rejects_invalid_contract_values(
+    soil_type,
+    priority,
+    message,
+):
+    with pytest.raises(InvalidRecommendationInputError, match=message):
+        validate_recommendation_inputs(
+            previous_crop=None,
+            current_crop="wheat",
+            next_crop=None,
+            soil_type=soil_type,
+            priority=priority,
+            crop_ids={"wheat"},
+        )
+
+
+def test_invalid_crop_error_is_an_input_error():
+    assert issubclass(InvalidCropSelectionError, InvalidRecommendationInputError)
 
 
 def test_calculate_annual_precipitation_for_five_year_period():

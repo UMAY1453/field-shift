@@ -524,9 +524,15 @@ Parametreler yalnızca isimleriyle verilmelidir. Rotasyon modülünün hata sın
 | Hata | Anlamı |
 |---|---|
 | `RecommendationError` | Bütün rotasyon modülü hatalarının temel sınıfı |
+| `InvalidRecommendationInputError` | Geçersiz `soil_type`, `priority` veya diğer kullanıcı girdileri |
 | `InvalidCropSelectionError` | Bilinmeyen ürün veya yanlış alanda kullanılan `fallow` |
 | `InvalidClimateResultError` | Eksik/geçersiz iklim özeti, tarih aralığı veya toplam yağış |
 | `CropDataError` | `crops.json` dosyasının okunamaması veya temel yapısının bozuk olması |
+
+`InvalidCropSelectionError`, `InvalidRecommendationInputError` sınıfından; diğer özel hata sınıfları ise
+doğrudan `RecommendationError` sınıfından türer. Böylece backend bütün rotasyon hatalarını
+`RecommendationError`, bütün kullanıcı girdisi hatalarını ise `InvalidRecommendationInputError` üzerinden
+yakalayabilir.
 
 Rotasyon modülü yeni bir harici paket gerektirmez; `json`, `pathlib` ve `datetime` Python standart
 kütüphanelerini kullanır.
