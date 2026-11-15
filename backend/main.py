@@ -1,10 +1,12 @@
 """Field Shift FastAPI uygulamasının giriş noktası."""
 
 import asyncio
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from backend.climate_analysis import (
@@ -40,6 +42,10 @@ from backend.recommendation import (
     recommend_rotations,
 )
 from backend.reference_period import get_latest_complete_reference_period
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 
 app = FastAPI(
@@ -294,3 +300,12 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         raise RecommendationError(
             "Birleşik analiz sonucu API cevap sözleşmesine uymuyor."
         ) from exc
+
+
+# API rotaları tanımlandıktan sonra frontend aynı origin altında sunulur.
+# Böylece yerelde ve Vercel'de tek URL hem arayüzü hem API'yi çalıştırır.
+app.mount(
+    "/",
+    StaticFiles(directory=FRONTEND_DIR, html=True),
+    name="frontend",
+)

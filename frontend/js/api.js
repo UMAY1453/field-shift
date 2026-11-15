@@ -1,6 +1,12 @@
-// Yerel FastAPI sunucusunun temel adresi.
+// Production'da frontend ve API aynı origin'i kullanır. Ayrı 5500 geliştirme
+// sunucusu kullanıldığında mevcut yerel FastAPI adresi korunur.
+const DEFAULT_API_BASE_URL =
+    window.location.port === "5500"
+        ? "http://127.0.0.1:8000"
+        : window.location.origin;
+
 const API_BASE_URL =
-    window.FIELD_SHIFT_API_URL ?? "http://127.0.0.1:8000";
+    window.FIELD_SHIFT_API_URL ?? DEFAULT_API_BASE_URL;
 
 /**
  * API hatalarının durum kodu ve uygulama koduyla taşınmasını sağlar.
