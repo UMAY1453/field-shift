@@ -1,8 +1,17 @@
 import httpx
 import pytest
+from fastapi import FastAPI
 from pydantic import ValidationError
 
-from backend.main import app
+from backend.climate_analysis import (
+    ClimateAnalysisError,
+    InsufficientClimateDataError,
+)
+from backend.main import (
+    app,
+    handle_climate_analysis_error,
+    handle_insufficient_climate_data,
+)
 from backend.models import (
     AnalyzeRequest,
     DailyClimateRecord,
@@ -153,3 +162,63 @@ def test_planned_rotation_assessment_accepts_limitations() -> None:
 
     assert assessment.rotation == ["fallow", "chickpea"]
     assert assessment.limitations
+
+
+@pytest.mark.asyncio
+async def test_insufficient_climate_data_error_response() -> None:
+    test_app = FastAPI()
+    test_app.add_exception_handler(
+        InsufficientClimateDataError,
+        handle_insufficient_climate_data,
+    )
+    test_app.add_exception_handler(
+        ClimateAnalysisError,
+        handle_climate_analysis_error,
+    )
+
+    @test_app.get("/raise-error")
+    async def raise_error() -> None:
+        raise InsufficientClimateDataError("çekirdek veri yetersiz")
+
+    transport = httpx.ASGITransport(app=test_app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/raise-error")
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": {
+            "code": "INSUFFICIENT_CLIMATE_DATA",
+            "message": "çekirdek veri yetersiz",
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_climate_analysis_error_response() -> None:
+    test_app = FastAPI()
+    test_app.add_exception_handler(
+        ClimateAnalysisError,
+        handle_climate_analysis_error,
+    )
+
+    @test_app.get("/raise-error")
+    async def raise_error() -> None:
+        raise ClimateAnalysisError("iklim kaydı geçersiz")
+
+    transport = httpx.ASGITransport(app=test_app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/raise-error")
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": {
+            "code": "CLIMATE_ANALYSIS_ERROR",
+            "message": "iklim kaydı geçersiz",
+        }
+    }

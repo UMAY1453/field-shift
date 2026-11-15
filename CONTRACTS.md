@@ -449,7 +449,9 @@ Kullanılabilecek hata kodları:
 | `400` | `INVALID_REQUEST` | İstek mantıksal olarak geçersiz |
 | `404` | `CROP_NOT_FOUND` | İstenen ürün bulunamadı |
 | `422` | `VALIDATION_ERROR` | Alan tipi veya değeri geçersiz |
+| `422` | `INSUFFICIENT_CLIMATE_DATA` | Analiz için çekirdek iklim verisi yetersiz |
 | `502` | `NASA_API_UNAVAILABLE` | NASA POWER servisine ulaşılamadı |
+| `500` | `CLIMATE_ANALYSIS_ERROR` | Normalize iklim verisi analiz sözleşmesine uymadı |
 | `500` | `INTERNAL_ERROR` | Beklenmeyen backend hatası |
 
 Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemelidir.

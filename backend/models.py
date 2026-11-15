@@ -111,6 +111,12 @@ class MonthlyClimate(ApiModel):
     precipitation_mm: float | None
 
 
+class ClimateAnalysisResult(ApiModel):
+    summary: ClimateSummary
+    risk: ClimateRisk
+    monthly_climate: list[MonthlyClimate]
+
+
 class RecommendationScores(ApiModel):
     total: int = Field(ge=0, le=100)
     climate: int = Field(ge=0, le=100)
