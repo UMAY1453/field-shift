@@ -1,1 +1,492 @@
-[]
+[
+  {
+    "id": "wheat",
+    "name": "Buğday",
+    "family": "Poaceae",
+    "is_legume": false,
+    "growing_season": [
+      "autumn",
+      "winter"
+    ],
+    "water_need": "medium",
+    "suitable_soils": [
+      "loamy",
+      "clay"
+    ],
+    "soil_notes": [
+      "Su tutma kapasitesi yüksek tınlı-killi ve humusça zengin topraklarda yüksek verim alınabilir.",
+      "Su göllenmesi buğday için olumsuzdur."
+    ],
+    "temperature_range_c": {
+      "min": 15,
+      "max": 23
+    },
+    "absolute_temperature_range_c": {
+      "min": 5,
+      "max": 27
+    },
+    "temperature_notes": [
+      "Çimlenme ve kardeşlenme döneminde yaklaşık 8-10 °C uygundur.",
+      "Kardeşlenme ile sapa kalkma döneminde yaklaşık 10-15 °C uygundur."
+    ],
+    "annual_precipitation_range_mm": {
+      "min": 350,
+      "max": 1150
+    },
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        [
+          "wheat",
+          "fallow",
+          "wheat"
+        ],
+        [
+          "wheat",
+          "lentil",
+          "wheat"
+        ],
+        [
+          "wheat",
+          "lentil",
+          "barley"
+        ]
+      ],
+      "disease_groups": [],
+      "notes": [
+        "Aynı tarlada uzun süre arka arkaya buğday yetiştirilmemelidir.",
+        "Kök hastalıkları ve bazı zararlılar nedeniyle münavebe uygulanmalıdır."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Triticum aestivum",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2114",
+        "supports": [
+          "temperature_range_c",
+          "absolute_temperature_range_c"
+        ]
+      },
+      {
+        "title": "İstanbul İl Tarım ve Orman Müdürlüğü — Buğday",
+        "url": "https://istanbul.tarimorman.gov.tr/Belgeler/KutuMenu/Brosurler/TarlaBitkileri/bugday.pdf",
+        "supports": [
+          "growing_season",
+          "suitable_soils",
+          "annual_precipitation_range_mm",
+          "rotation"
+        ]
+      },
+      {
+        "title": "Trakya Tarımsal Araştırma Enstitüsü — Buğday Tarımı",
+        "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=46",
+        "supports": [
+          "rotation"
+        ]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": [
+          "water_need"
+        ]
+      }
+    ]
+  },
+
+
+  {
+    "id": "barley",
+    "name": "Arpa",
+    "family": "Poaceae",
+    "is_legume": false,
+    "growing_season": ["autumn", "winter"],
+    "water_need": "medium",
+    "suitable_soils": ["loamy"],
+    "soil_notes": [
+      "Organik maddece zengin, havalanması ve nemliliği uygun, nötr topraklar tercih edilir."
+    ],
+    "temperature_range_c": {"min": 15, "max": 20},
+    "absolute_temperature_range_c": {"min": 2, "max": 40},
+    "temperature_notes": [],
+    "annual_precipitation_range_mm": {"min": 500, "max": 1000},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["barley", "fallow", "barley"],
+        ["barley", "lentil", "wheat", "lentil"],
+        ["barley", "corn"],
+        ["barley", "sunflower"]
+      ],
+      "disease_groups": [],
+      "notes": [
+        "Üst üste arpa ile buğday öncesi veya sonrası arpa ekiminden kaçınılmalıdır.",
+        "Baklagiller ve çapa bitkileriyle münavebe yapılabilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Hordeum vulgare",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1232",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm"]
+      },
+      {
+        "title": "Kütahya İl Tarım ve Orman Müdürlüğü — Arpa Yetiştiriciliği",
+        "url": "https://kutahya.tarimorman.gov.tr/BelgelerArsiv/ARPA%20%20YET%C4%B0%C5%9ET%C4%B0R%C4%B0C%C4%B0L%C4%B0%C4%9E%C4%B0.pdf",
+        "supports": ["growing_season", "suitable_soils", "rotation"]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": ["water_need"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "corn",
+    "name": "Mısır",
+    "family": "Poaceae",
+    "is_legume": false,
+    "growing_season": ["spring", "summer"],
+    "water_need": "high",
+    "suitable_soils": ["loamy"],
+    "soil_notes": [
+      "Drenajı iyi, su tutma kapasitesi yüksek, çabuk ısınabilen ve derin topraklar tercih edilir."
+    ],
+    "temperature_range_c": {"min": 18, "max": 33},
+    "absolute_temperature_range_c": {"min": 10, "max": 47},
+    "temperature_notes": [
+      "Ekim için 9-10 cm toprak derinliğinde yaklaşık 12-13 °C önerilmektedir."
+    ],
+    "annual_precipitation_range_mm": {"min": 600, "max": 1200},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["corn", "wheat", "sunflower", "lentil"]
+      ],
+      "disease_groups": [],
+      "notes": [
+        "Her yıl aynı tarlaya mısır ekilmesi yerine uygun ürünlerle münavebe önerilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Zea mays",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2175",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm"]
+      },
+      {
+        "title": "Tarım ve Orman Bakanlığı — Mısır",
+        "url": "https://www.tarimorman.gov.tr/GKGM/Belgeler/Uretici_Bilgi_Kosesi/Dokumanlar/misir.pdf",
+        "supports": ["growing_season", "suitable_soils", "temperature_notes", "rotation"]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": ["water_need"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "chickpea",
+    "name": "Nohut",
+    "family": "Fabaceae",
+    "is_legume": true,
+    "growing_season": ["spring", "summer"],
+    "water_need": "low",
+    "suitable_soils": ["loamy", "clay"],
+    "soil_notes": [
+      "Su tutan veya çok kumlu topraklardan kaçınılmalıdır.",
+      "İyi drenaj önemlidir."
+    ],
+    "temperature_range_c": {"min": 15, "max": 29},
+    "absolute_temperature_range_c": {"min": 7, "max": 35},
+    "temperature_notes": [],
+    "annual_precipitation_range_mm": {"min": 600, "max": 1000},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["wheat", "chickpea"],
+        ["chickpea", "wheat", "fallow"],
+        ["chickpea", "corn"]
+      ],
+      "disease_groups": ["pulse_ascochyta_hosts"],
+      "notes": [
+        "Nohut üst üste ekilmemelidir.",
+        "Hububatlarla ekim nöbetinde kullanılabilir.",
+        "Baklagil olması nedeniyle uygun nodül oluşumu koşullarında biyolojik azot bağlayabilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Cicer arietinum",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2479",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm"]
+      },
+      {
+        "title": "Samsun İl Tarım ve Orman Müdürlüğü — Nohut Yetiştiriciliği",
+        "url": "https://samsun.tarimorman.gov.tr/Belgeler/Yayinlar/Lifletlerimiz/t-4.pdf",
+        "supports": ["growing_season", "water_need", "rotation"]
+      },
+      {
+        "title": "Tarım ve Orman Bakanlığı — Yemeklik Baklagiller",
+        "url": "https://www.tarimorman.gov.tr/Belgeler/yemeklik_baklagil_kitabi.pdf",
+        "supports": ["suitable_soils", "rotation"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "sunflower",
+    "name": "Ayçiçeği",
+    "family": "Asteraceae",
+    "is_legume": false,
+    "growing_season": ["spring", "summer"],
+    "water_need": "high",
+    "suitable_soils": ["loamy", "sandy"],
+    "soil_notes": [
+      "İyi drenajlı orta ve hafif bünyeli topraklar tercih edilir."
+    ],
+    "temperature_range_c": {"min": 17, "max": 34},
+    "absolute_temperature_range_c": {"min": 5, "max": 45},
+    "temperature_notes": [],
+    "annual_precipitation_range_mm": {"min": 600, "max": 1000},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["sunflower", "wheat", "chickpea", "corn"],
+        ["wheat", "sunflower"]
+      ],
+      "disease_groups": [],
+      "notes": [
+        "Monokültür üretimden kaçınılmalıdır.",
+        "Baklagiller, yüzeysel köklü bitkiler ve hububatlarla münavebe önerilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Helianthus annuus",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1191",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm", "suitable_soils"]
+      },
+      {
+        "title": "Trakya Tarımsal Araştırma Enstitüsü — Ekolojik Ayçiçeği Tarımı",
+        "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=56",
+        "supports": ["growing_season", "rotation"]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": ["water_need"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "canola",
+    "name": "Kanola",
+    "family": "Brassicaceae",
+    "is_legume": false,
+    "growing_season": ["autumn", "winter", "spring"],
+    "water_need": "medium",
+    "suitable_soils": ["loamy", "clay"],
+    "soil_notes": [
+      "Humuslu, derin yapılı ve iyi drenajlı topraklar tercih edilir.",
+      "Su tutan ve göllenen alanlardan kaçınılmalıdır."
+    ],
+    "temperature_range_c": {"min": 15, "max": 25},
+    "absolute_temperature_range_c": {"min": 5, "max": 41},
+    "temperature_notes": [
+      "İyi çimlenme için toprak sıcaklığının en az yaklaşık 10-12 °C olması önerilir."
+    ],
+    "annual_precipitation_range_mm": {"min": 500, "max": 1000},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["wheat", "canola", "chickpea", "sunflower"],
+        ["sunflower", "canola", "wheat"]
+      ],
+      "disease_groups": [],
+      "notes": [
+        "Monokültür kanola üretiminden kaçınılmalıdır.",
+        "Baklagiller ve hububatlarla münavebe önerilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Brassica napus",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=549",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm"]
+      },
+      {
+        "title": "Trakya Tarımsal Araştırma Enstitüsü — Ekolojik Kanola Tarımı",
+        "url": "https://arastirma.tarimorman.gov.tr/ttae/Sayfalar/Detay.aspx?SayfaId=67",
+        "supports": ["growing_season", "rotation"]
+      },
+      {
+        "title": "Karadeniz Tarımsal Araştırma Enstitüsü — Kanola Tarımı",
+        "url": "https://arastirma.tarimorman.gov.tr/ktae/Belgeler/brosurler/Kanola%20Tar%C4%B1m%C4%B1.pdf",
+        "supports": ["suitable_soils", "temperature_notes"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "potato",
+    "name": "Patates",
+    "family": "Solanaceae",
+    "is_legume": false,
+    "growing_season": ["spring", "summer"],
+    "water_need": "medium",
+    "suitable_soils": ["loamy"],
+    "soil_notes": [
+      "Yumru gelişimi için gevşek, iyi hazırlanmış ve iyi drenajlı toprak tercih edilir."
+    ],
+    "temperature_range_c": {"min": 15, "max": 25},
+    "absolute_temperature_range_c": {"min": 7, "max": 30},
+    "temperature_notes": [
+      "Dikim için toprak sıcaklığının yaklaşık 8-10 °C olması önerilmektedir."
+    ],
+    "annual_precipitation_range_mm": {"min": 500, "max": 800},
+    "rotation": {
+      "minimum_return_years": null,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [],
+      "disease_groups": ["solanaceae_soilborne_diseases"],
+      "notes": [
+        "Her yıl üst üste aynı tarlaya patates dikilmemelidir.",
+        "Topraktan geçen hastalıkların yoğunluğunu azaltmak için münavebe uygulanmalıdır."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Solanum tuberosum",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1971",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm", "suitable_soils"]
+      },
+      {
+        "title": "Kütahya İl Tarım ve Orman Müdürlüğü — Patates Tarımı",
+        "url": "https://kutahya.tarimorman.gov.tr/Belgeler/PATATES%20TARIMI.pdf",
+        "supports": ["growing_season", "soil_notes", "temperature_notes", "rotation"]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": ["water_need"]
+      }
+    ]
+  },
+
+
+  {
+    "id": "processing_tomato",
+    "name": "Salçalık Domates",
+    "family": "Solanaceae",
+    "is_legume": false,
+    "growing_season": ["spring", "summer"],
+    "water_need": "high",
+    "suitable_soils": ["loamy"],
+    "soil_notes": [
+      "Süzek, humus ve organik maddece zengin, su tutma kapasitesi iyi tınlı topraklar tercih edilir."
+    ],
+    "temperature_range_c": {"min": 20, "max": 27},
+    "absolute_temperature_range_c": {"min": 7, "max": 35},
+    "temperature_notes": [
+      "Optimum gelişim için gece ve gündüz sıcaklıkları arasında fark bulunması yararlıdır."
+    ],
+    "annual_precipitation_range_mm": {"min": 600, "max": 1300},
+    "rotation": {
+      "minimum_return_years": 3,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [],
+      "disease_groups": ["solanaceae_soilborne_diseases"],
+      "notes": [
+        "Domates veya aynı familyadan ürünler art arda yetiştirilmemelidir.",
+        "Kaynak 3-5 yıllık münavebe programı önermektedir; veri alanında koruyucu alt sınır olarak 3 yıl tutulmuştur.",
+        "Araya baklagil veya hububat alınabilir."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Lycopersicon esculentum",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1379",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm"]
+      },
+      {
+        "title": "Isparta İl Tarım ve Orman Müdürlüğü — Açıkta Domates Yetiştiriciliği",
+        "url": "https://isparta.tarimorman.gov.tr/BelgelerArsiv/Faydal%C4%B1%20Bilgiler/%E2%80%8BBitkisel%20Yeti%C5%9Ftiricilik/Sebze%20Yeti%C5%9Ftiricili%C4%9Fi/A%C3%A7%C4%B1kta%20Domates%20Yeti%C5%9Ftiricili%C4%9Fi.pdf",
+        "supports": ["growing_season", "suitable_soils", "rotation"]
+      },
+      {
+        "title": "FAO — Crop Water Needs",
+        "url": "https://www.fao.org/4/S2022E/s2022e07.htm",
+        "supports": ["water_need"]
+      }
+    ]
+  },
+
+  
+  {
+    "id": "lentil",
+    "name": "Yeşil Mercimek",
+    "family": "Fabaceae",
+    "is_legume": true,
+    "growing_season": ["winter", "spring"],
+    "water_need": "low",
+    "suitable_soils": ["loamy", "clay"],
+    "soil_notes": [
+      "İyi drenajlı orta ve ağır bünyeli topraklar uygundur.",
+      "Fazla yağış, su göllenmesi ve kök bölgesindeki aşırı ıslaklık hastalık riskini artırabilir."
+    ],
+    "temperature_range_c": {"min": 15, "max": 29},
+    "absolute_temperature_range_c": {"min": 5, "max": 32},
+    "temperature_notes": [
+      "Kışlık ve yazlık çeşitlerin ekim zamanı ve soğuğa dayanımı aynı değildir."
+    ],
+    "annual_precipitation_range_mm": {"min": 600, "max": 1000},
+    "rotation": {
+      "minimum_return_years": 2,
+      "avoid_continuous_cropping": true,
+      "example_rotations": [
+        ["wheat", "lentil"],
+        ["lentil", "corn"]
+      ],
+      "disease_groups": ["pulse_ascochyta_hosts"],
+      "notes": [
+        "Mercimek veya diğer baklagiller aynı tarlada üst üste yetiştirilmemelidir.",
+        "Özellikle hububatla en az iki yıllık ekim nöbeti uygulanması önerilmektedir.",
+        "Hububat-mercimek münavebesi kuru koşullarda yaygındır."
+      ]
+    },
+    "sources": [
+      {
+        "title": "FAO EcoCrop — Lens culinaris",
+        "url": "https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=7209",
+        "supports": ["temperature_range_c", "absolute_temperature_range_c", "annual_precipitation_range_mm", "suitable_soils"]
+      },
+      {
+        "title": "Tarım ve Orman Bakanlığı — Yemeklik Baklagiller",
+        "url": "https://www.tarimorman.gov.tr/Belgeler/yemeklik_baklagil_kitabi.pdf",
+        "supports": ["growing_season", "water_need", "rotation"]
+      },
+      {
+        "title": "Tarım ve Orman Bakanlığı — Zirai Mücadele Teknik Talimatları Cilt III",
+        "url": "https://www.tarimorman.gov.tr/TAGEM/Belgeler/Teknik%20tal%C4%B1matlar%202008/C%C4%B0LT%203.pdf",
+        "supports": ["minimum_return_years", "disease_groups", "rotation"]
+      }
+    ]
+  }
+]
