@@ -44,11 +44,6 @@
         display: none;
     }
 
-    .api-status {
-        padding: 8px 10px;
-        font-size: 0.75rem;
-    }
-
     .hero {
         padding: 42px 0 32px;
     }
@@ -117,13 +112,6 @@
 
     .brand-copy strong {
         font-size: 0.95rem;
-    }
-
-    #api-status-text {
-        max-width: 110px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
     .hero h1 {

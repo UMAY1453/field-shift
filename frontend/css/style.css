@@ -133,37 +133,6 @@ a {
     color: var(--color-text-muted);
 }
 
-.api-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    padding: 9px 13px;
-    color: var(--color-text-muted);
-    background: var(--color-surface-soft);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-.status-dot {
-    width: 9px;
-    height: 9px;
-    background: var(--color-warning);
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(196, 122, 19, 0.13);
-}
-
-.api-status--online .status-dot {
-    background: var(--color-success);
-    box-shadow: 0 0 0 4px rgba(31, 138, 91, 0.13);
-}
-
-.api-status--offline .status-dot {
-    background: var(--color-danger);
-    box-shadow: 0 0 0 4px rgba(184, 64, 64, 0.13);
-}
-
 /* Giriş alanı */
 .hero {
     padding: 72px 0 46px;
@@ -791,6 +760,11 @@ select:disabled {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
+}
+
+/* Kullanıcının kendi plan değerlendirmesi tek ve geniş bir karttır. */
+.planned-assessment-grid {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .recommendation-card {

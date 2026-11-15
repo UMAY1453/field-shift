@@ -55,16 +55,6 @@
                     <small>NASA Tarım Karar Desteği</small>
                 </span>
             </a>
-
-            <!-- Backend bağlantı durumu JavaScript tarafından güncellenecek. -->
-            <div
-                id="api-status"
-                class="api-status api-status--checking"
-                aria-live="polite"
-            >
-                <span class="status-dot" aria-hidden="true"></span>
-                <span id="api-status-text">Backend kontrol ediliyor</span>
-            </div>
         </div>
     </header>
 
@@ -191,19 +181,56 @@
 
                     <!-- Form verileri POST /api/analyze isteğine dönüştürülecek. -->
                     <form id="analysis-form" class="analysis-form" novalidate>
+                        <!-- Önceki ve mevcut ürün yan yana gösterilir. -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="previous-crop">Önceki ürün</label>
+
+                                <select
+                                    id="previous-crop"
+                                    name="previous_crop"
+                                    disabled
+                                >
+                                    <option value="">Ürünler yükleniyor...</option>
+                                </select>
+
+                                <small>
+                                    Bilmiyorsanız “Bilmiyorum”, tarla nadasa bırakıldıysa
+                                    “Nadas” seçin.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="current-crop">Yetiştirmek istediğiniz ürün</label>
+
+                                <select
+                                    id="current-crop"
+                                    name="current_crop"
+                                    required
+                                    disabled
+                                >
+                                    <option value="">Ürünler yükleniyor...</option>
+                                </select>
+
+                                <small>Şimdi ekmek veya dikmek istediğiniz ürünü seçin.</small>
+                            </div>
+                        </div>
+
+                        <!-- Sonraki ürün isteğe bağlıdır. -->
                         <div class="form-group">
-                            <label for="current-crop">Mevcut ürün</label>
+                            <label for="next-crop">Sonraki dönem ürünü</label>
 
                             <select
-                                id="current-crop"
-                                name="current_crop"
-                                required
+                                id="next-crop"
+                                name="next_crop"
                                 disabled
                             >
                                 <option value="">Ürünler yükleniyor...</option>
                             </select>
 
-                            <small>Şu anda tarlada yetiştirilen ürünü seçin.</small>
+                            <small>
+                                Bu ürünün hasadından sonra yetiştirmeyi düşündüğünüz ürünü seçebilirsiniz.
+                            </small>
                         </div>
 
                         <div class="form-row">
@@ -436,6 +463,26 @@
                         </div>
                     </article>
                 </div>
+
+                <!-- Kullanıcının seçtiği ürün zinciri burada ayrıca değerlendirilir. -->
+                <section class="recommendations-section">
+                    <div class="results-heading results-heading--small">
+                        <div>
+                            <span class="section-kicker">Plan değerlendirmesi</span>
+                            <h2>Seçtiğiniz ürün planı</h2>
+                            <p>
+                                Önceki, mevcut ve sonraki ürün seçimlerinizin birlikte
+                                değerlendirilmiş sonucudur.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        id="planned-rotation-assessment"
+                        class="recommendations-grid planned-assessment-grid"
+                        aria-live="polite"
+                    ></div>
+                </section>
 
                 <section class="recommendations-section">
                     <div class="results-heading results-heading--small">
