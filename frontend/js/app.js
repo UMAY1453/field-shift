@@ -7,10 +7,12 @@ import {
 import {
     initializeMap,
     invalidateMapSize,
+    resetMapSelection,
     useCurrentLocation,
 } from "./map.js";
 
 import {
+    clearClimateChart,
     renderClimateChart,
 } from "./charts.js";
 
@@ -18,10 +20,10 @@ import {
     clearError,
     populateCrops,
     readAnalysisRequest,
+    resetAnalysisForm,
     renderAnalysisResult,
     scrollToForm,
     scrollToResults,
-    setApiStatus,
     setDefaultDateRange,
     setLoading,
     showCropsUnavailable,
@@ -30,22 +32,20 @@ import {
 } from "./ui.js";
 
 /**
- * Backend bağlantı durumunu kontrol eder.
+ * Backend bağlantısını kullanıcıya teknik durum göstermeden kontrol eder.
  */
 async function initializeHealthCheck() {
-    setApiStatus("checking");
-
     try {
         const response = await checkHealth();
 
         if (response?.status !== "ok") {
             throw new Error("Backend sağlıklı cevap vermedi.");
         }
-
-        setApiStatus("online");
     } catch (error) {
-        console.warn("Backend health check başarısız:", error);
-        setApiStatus("offline");
+        console.warn(
+            "Backend health check başarısız:",
+            error,
+        );
     }
 }
 
@@ -123,6 +123,16 @@ async function handleAnalysisSubmit(event) {
 }
 
 /**
+ * Eski analiz verilerini temizleyerek yeni analiz formunu hazırlar.
+ */
+function handleNewAnalysis() {
+    clearClimateChart();
+    resetMapSelection();
+    resetAnalysisForm();
+    scrollToForm();
+}
+
+/**
  * Sayfadaki kullanıcı etkileşimlerini ilgili fonksiyonlara bağlar.
  */
 function registerEventListeners() {
@@ -136,7 +146,7 @@ function registerEventListeners() {
 
     document
         .getElementById("scroll-to-form-button")
-        .addEventListener("click", scrollToForm);
+        .addEventListener("click", handleNewAnalysis);
 
     // Ekran boyutu değiştiğinde Leaflet haritasını düzeltir.
     let resizeTimer = null;
@@ -168,7 +178,6 @@ function initializeApplication() {
             error.message ??
                 "Uygulama başlatılırken bir hata oluştu.",
         );
-        setApiStatus("offline");
     }
 }
 

@@ -14,6 +14,22 @@ const sourceDescriptions = {
     demo: "NASA servisine ulaşılamadığı için demo veri kullanıldı.",
 };
 
+// Backend ürün kimliklerini kullanıcıya gösterilecek adlarla eşleştirir.
+const cropNamesById = new Map([
+    ["fallow", "Nadas"],
+]);
+
+/**
+ * Ürün kimliğine karşılık gelen kullanıcı dostu adı döndürür.
+ */
+function getCropDisplayName(cropId) {
+    if (!cropId) {
+        return "Bilinmiyor";
+    }
+
+    return cropNamesById.get(cropId) ?? cropId;
+}
+
 /**
  * Tekrarlanan DOM sorgularını kısaltır.
  */
@@ -92,83 +108,109 @@ export function updateSelectedLocation({ latitude, longitude }) {
         `${Number(latitude).toFixed(4)}, ${Number(longitude).toFixed(4)}`;
 }
 
+
 /**
- * Backend bağlantı durumunu üst menüde gösterir.
+ * Backend'den gelen ürünleri üç seçim kutusuna ekler.
  */
-export function setApiStatus(status) {
-    const container = getElement("api-status");
-    const text = getElement("api-status-text");
+export function populateCrops(crops) {
+    const previousSelect = getElement("previous-crop");
+    const currentSelect = getElement("current-crop");
+    const nextSelect = getElement("next-crop");
 
-    container.classList.remove(
-        "api-status--checking",
-        "api-status--online",
-        "api-status--offline",
+    // Eski eşlemeleri temizleyip özel nadas değerini yeniden ekler.
+    cropNamesById.clear();
+    cropNamesById.set("fallow", "Nadas");
+
+    previousSelect.replaceChildren();
+    currentSelect.replaceChildren();
+    nextSelect.replaceChildren();
+
+    // Boş önceki ürün seçimi backend'e null olarak gönderilecek.
+    const unknownPreviousOption = createElement(
+        "option",
+        "",
+        "Bilmiyorum",
     );
+    unknownPreviousOption.value = "";
+    unknownPreviousOption.selected = true;
+    previousSelect.append(unknownPreviousOption);
 
-    if (status === "online") {
-        container.classList.add("api-status--online");
-        text.textContent = "Backend bağlı";
-        return;
-    }
+    // Nadas, bilinmeyen geçmişten ayrı bir özel değerdir.
+    const fallowOption = createElement("option", "", "Nadas");
+    fallowOption.value = "fallow";
+    previousSelect.append(fallowOption);
 
-    if (status === "offline") {
-        container.classList.add("api-status--offline");
-        text.textContent = "Backend bağlantısı yok";
-        return;
-    }
+    // Current crop zorunlu olduğu için seçilemeyen placeholder kullanılır.
+    const currentPlaceholder = createElement(
+        "option",
+        "",
+        "Yetiştirmek istediğiniz ürünü seçin",
+    );
+    currentPlaceholder.value = "";
+    currentPlaceholder.selected = true;
+    currentPlaceholder.disabled = true;
+    currentSelect.append(currentPlaceholder);
 
-    container.classList.add("api-status--checking");
-    text.textContent = "Backend kontrol ediliyor";
+    // Boş sonraki ürün seçimi backend'e null olarak gönderilecek.
+    const unplannedNextOption = createElement(
+        "option",
+        "",
+        "Henüz planlamadım",
+    );
+    unplannedNextOption.value = "";
+    unplannedNextOption.selected = true;
+    nextSelect.append(unplannedNextOption);
+
+    crops.forEach((crop) => {
+        const label = crop.name ?? crop.id;
+
+        // Sonuç kartlarında kullanılmak üzere Türkçe görünen adı saklar.
+        cropNamesById.set(crop.id, label);
+
+        const previousOption = createElement("option", "", label);
+        previousOption.value = crop.id;
+        previousSelect.append(previousOption);
+
+        const currentOption = createElement("option", "", label);
+        currentOption.value = crop.id;
+        currentSelect.append(currentOption);
+
+        const nextOption = createElement("option", "", label);
+        nextOption.value = crop.id;
+        nextSelect.append(nextOption);
+    });
+
+    const hasCrops = crops.length > 0;
+
+    previousSelect.disabled = !hasCrops;
+    currentSelect.disabled = !hasCrops;
+    nextSelect.disabled = !hasCrops;
 }
 
 /**
- * Backend'den gelen ürünleri seçim kutusuna ekler.
+ * Ürün listesinin alınamadığını bütün ürün alanlarında belirtir.
  */
-export function populateCrops(crops) {
-    const select = getElement("current-crop");
-    select.replaceChildren();
+export function showCropsUnavailable() {
+    const selectIds = [
+        "previous-crop",
+        "current-crop",
+        "next-crop",
+    ];
 
-    const placeholder = createElement(
-        "option",
-        "",
-        "Mevcut ürününüzü seçin",
-    );
+    selectIds.forEach((selectId) => {
+        const select = getElement(selectId);
+        select.replaceChildren();
 
-    placeholder.value = "";
-    placeholder.selected = true;
-    placeholder.disabled = true;
-    select.append(placeholder);
-
-    crops.forEach((crop) => {
         const option = createElement(
             "option",
             "",
-            crop.name ?? crop.id,
+            "Ürün listesi alınamadı",
         );
 
-        option.value = crop.id;
+        option.value = "";
         select.append(option);
+        select.disabled = true;
     });
-
-    select.disabled = crops.length === 0;
-}
-
-/**
- * Ürün listesinin alınamadığını form üzerinde belirtir.
- */
-export function showCropsUnavailable() {
-    const select = getElement("current-crop");
-    select.replaceChildren();
-
-    const option = createElement(
-        "option",
-        "",
-        "Ürün listesi alınamadı",
-    );
-
-    option.value = "";
-    select.append(option);
-    select.disabled = true;
 }
 
 /**
@@ -180,14 +222,21 @@ export function readAnalysisRequest(form) {
         throw new Error("Lütfen zorunlu alanları tamamlayın.");
     }
 
-    const latitude = Number(getElement("latitude").value);
-    const longitude = Number(getElement("longitude").value);
-    const startDate = getElement("start-date").value;
-    const endDate = getElement("end-date").value;
+    const latitudeValue = getElement("latitude").value;
+    const longitudeValue = getElement("longitude").value;
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!latitudeValue || !longitudeValue) {
         throw new Error("Lütfen haritadan bir konum seçin.");
     }
+
+    const latitude = Number(latitudeValue);
+    const longitude = Number(longitudeValue);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error("Seçilen konum geçerli değil.");
+    }
+    const startDate = getElement("start-date").value;
+    const endDate = getElement("end-date").value;
 
     if (startDate > endDate) {
         throw new Error(
@@ -200,9 +249,22 @@ export function readAnalysisRequest(form) {
         longitude,
         start_date: startDate,
         end_date: endDate,
-        current_crop: getElement("current-crop").value,
-        soil_type: getElement("soil-type").value,
-        priority: getElement("priority").value,
+
+        // Boş isteğe bağlı seçimler JSON içinde null gönderilir.
+        previous_crop:
+            getElement("previous-crop").value || null,
+
+        current_crop:
+            getElement("current-crop").value,
+
+        next_crop:
+            getElement("next-crop").value || null,
+
+        soil_type:
+            getElement("soil-type").value,
+
+        priority:
+            getElement("priority").value,
     };
 }
 
@@ -376,11 +438,15 @@ function appendTextList(container, title, items, isRisk = false) {
 /**
  * Tek bir ürün rotasyonu öneri kartı oluşturur.
  */
-function createRecommendationCard(recommendation, index) {
+function createRecommendationCard(
+    recommendation,
+    index,
+    { isPlanned = false } = {},
+) {
     const rank = recommendation.rank ?? index + 1;
     const card = createElement(
         "article",
-        rank === 1
+        isPlanned || rank === 1
             ? "recommendation-card recommendation-card--featured"
             : "recommendation-card",
     );
@@ -395,7 +461,11 @@ function createRecommendationCard(recommendation, index) {
         createElement(
             "span",
             "recommendation-rank",
-            rank === 1 ? "En uygun öneri" : `${rank}. öneri`,
+            isPlanned
+                ? "Seçtiğiniz plan"
+                : rank === 1
+                    ? "En uygun öneri"
+                    : `${rank}. öneri`,
         ),
         createElement(
             "h3",
@@ -427,11 +497,15 @@ function createRecommendationCard(recommendation, index) {
         : [];
 
     rotation.forEach((crop, cropIndex) => {
+        const cropName = getCropDisplayName(crop);
+
         rotationPath.append(
             createElement(
                 "span",
                 "",
-                cropIndex === 0 ? crop : `→ ${crop}`,
+                cropIndex === 0
+                    ? cropName
+                    : `→ ${cropName}`,
             ),
         );
     });
@@ -461,9 +535,42 @@ function createRecommendationCard(recommendation, index) {
         true,
     );
 
+    appendTextList(
+        body,
+        "Değerlendirme sınırları",
+        recommendation.limitations,
+    );
+
     card.append(header, body);
 
     return card;
+}
+
+/**
+ * Kullanıcının seçtiği ürün zincirini önerilerden ayrı gösterir.
+ */
+function renderPlannedRotationAssessment(assessment) {
+    const container = getElement("planned-rotation-assessment");
+    container.replaceChildren();
+
+    if (!assessment || typeof assessment !== "object") {
+        container.append(
+            createElement(
+                "div",
+                "empty-state",
+                "Seçilen ürün planı değerlendirilemedi.",
+            ),
+        );
+        return;
+    }
+
+    container.append(
+        createRecommendationCard(
+            assessment,
+            0,
+            { isPlanned: true },
+        ),
+    );
 }
 
 /**
@@ -494,6 +601,7 @@ function renderRecommendations(recommendations) {
     });
 }
 
+
 /**
  * API analiz cevabını sonuç bölümüne aktarır.
  */
@@ -513,9 +621,45 @@ export function renderAnalysisResult(data) {
     renderSource(data.source);
     renderSummary(data.summary);
     renderRisk(data.risk);
+    renderPlannedRotationAssessment(
+        data.planned_rotation_assessment,
+    );
     renderRecommendations(data.recommendations);
 
     getElement("results-section").hidden = false;
+}
+
+/**
+ * Yeni analiz için form seçimlerini ve eski sonuç görünümünü temizler.
+ */
+export function resetAnalysisForm() {
+    const form = getElement("analysis-form");
+
+    // Form içindeki seçimleri başlangıç değerlerine döndürür.
+    form.reset();
+
+    // Konum alanları formun dışında bulunduğu için ayrıca temizlenir.
+    getElement("latitude").value = "";
+    getElement("longitude").value = "";
+
+    getElement("selected-location-text").textContent =
+        "Henüz konum seçilmedi";
+
+    // Dinamik olarak oluşturulan ürün seçimlerini başlangıca döndürür.
+    getElement("previous-crop").value = "";
+    getElement("current-crop").value = "";
+    getElement("next-crop").value = "";
+
+    // Tarımsal ayarları varsayılan değerlere döndürür.
+    getElement("soil-type").value = "";
+    getElement("priority").value = "balanced";
+
+    // Form sıfırlanınca boşalan tarihleri yeniden varsayılan döneme ayarlar.
+    setDefaultDateRange();
+
+    // Önceki hata ve analiz sonuçlarını gizler.
+    clearError();
+    getElement("results-section").hidden = true;
 }
 
 /**
