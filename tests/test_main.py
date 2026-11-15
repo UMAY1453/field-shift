@@ -44,6 +44,20 @@ async def test_health_endpoint() -> None:
     }
 
 
+@pytest.mark.asyncio
+async def test_root_serves_frontend() -> None:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Field Shift" in response.text
+
+
 def test_analyze_request_rejects_reverse_date_range() -> None:
     try:
         AnalyzeRequest(

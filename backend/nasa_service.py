@@ -9,8 +9,10 @@ from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import random
+import tempfile
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -49,7 +51,11 @@ CACHE_VERSION = 1
 CACHE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CACHE_DIR = PROJECT_ROOT / "backend" / "cache"
+DEFAULT_CACHE_DIR = (
+    Path(tempfile.gettempdir()) / "field-shift-cache"
+    if os.getenv("VERCEL")
+    else PROJECT_ROOT / "backend" / "cache"
+)
 DEFAULT_DEMO_PATH = PROJECT_ROOT / "backend" / "data" / "demo_climate.json"
 
 BURSA_DEMO_LATITUDE = 40.195
