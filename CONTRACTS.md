@@ -78,39 +78,80 @@ GET /api/crops
   "crops": [
     {
       "id": "wheat",
-      "name": "Buğday",
-      "family": "Poaceae",
-      "water_need": "medium",
-      "suitable_soils": [
-        "loamy",
-        "clay"
-      ],
-      "temperature_range_c": {
-        "min": 5,
-        "max": 25
-      },
-      "annual_precipitation_range_mm": {
-        "min": 350,
-        "max": 750
-      }
+      "name": "Buğday"
     }
   ]
 }
 ```
 
-### Zorunlu ürün alanları
+`GET /api/crops`, frontend'in ürün seçim alanlarında kullanacağı hafif bir listedir. Her ürün için yalnızca
+`id` ve `name` döndürür; rotasyon kuralları, bilimsel notlar ve kaynaklar API cevabına eklenmez.
+
+### `/api/crops` cevap alanları
 
 | Alan | Tip | Açıklama |
 |---|---|---|
 | `id` | string | Ürünün kod içinde kullanılan benzersiz kimliği |
 | `name` | string | Kullanıcıya gösterilecek ürün adı |
-| `family` | string | Bitkinin botanik ailesi |
-| `water_need` | string | `low`, `medium` veya `high` |
-| `suitable_soils` | string listesi | Ürüne uygun toprak türleri |
-| `temperature_range_c` | object | Önerilen minimum ve maksimum sıcaklık |
-| `annual_precipitation_range_mm` | object | Önerilen yıllık yağış aralığı |
 
-`backend/data/crops.json` dosyasının kök yapısı doğrudan bir JSON listesi olacaktır. `/api/crops` endpoint’i bu listeyi `crops` alanı içinde döndürecektir.
+### `backend/data/crops.json` iç veri şeması
+
+`backend/data/crops.json` dosyasının kök yapısı doğrudan bir JSON listesidir. Rotasyon modülü bu dosyayı
+doğrudan okuyarak ayrıntılı ürün verilerini kullanır. Backend ana akışı, `/api/crops` cevabını oluştururken
+her nesneden yalnızca `id` ve `name` alanlarını seçer.
+
+Her ürün nesnesinde aşağıdaki alanlar bulunur:
+
+| Alan | Tip | Açıklama |
+|---|---|---|
+| `id` | string | Ürünün benzersiz ve API genelinde kullanılan kimliği |
+| `name` | string | Kullanıcıya gösterilecek Türkçe ürün adı |
+| `family` | string | Bitkinin botanik ailesi |
+| `is_legume` | boolean | Ürünün baklagil olup olmadığı |
+| `growing_season` | string listesi | Ürünün yetiştirildiği dönemler: `spring`, `summer`, `autumn`, `winter` |
+| `water_need` | string | `low`, `medium` veya `high` |
+| `suitable_soils` | string listesi | Sözleşmedeki standart toprak kodlarından uygun olanlar |
+| `soil_notes` | string listesi | Drenaj, göllenme ve toprak yapısıyla ilgili kaynaklı ayrıntılar |
+| `temperature_range_c` | object | Genel ekolojik optimum sıcaklığın `min` ve `max` değerleri |
+| `absolute_temperature_range_c` | object | Genel ekolojik dış sıcaklık sınırlarının `min` ve `max` değerleri |
+| `temperature_notes` | string listesi | Ekim, çimlenme veya gelişim dönemlerine özgü sıcaklık açıklamaları |
+| `annual_precipitation_range_mm` | object | Önerilen yıllık yağışın `min` ve `max` değerleri |
+| `rotation` | object | Ürün tekrarı, rotasyon örnekleri, ortak hastalık grupları ve açıklamalar |
+| `sources` | object listesi | Ürün bilgisinin kaynakları ve her kaynağın desteklediği alanlar |
+
+`temperature_range_c`, iklim uygunluğu puanlanırken kullanılan optimum aralıktır.
+`absolute_temperature_range_c`, kısa süreli iklim uçlarının risk olarak açıklanmasına yardım eder; tek başına
+kesin ürün eleme ölçütü değildir. Birkaç yıllık dönemin mutlak minimum veya maksimum değeri doğrudan genel
+uygunsuzluk kararı üretmez. Mümkün olduğunda yetişme dönemine denk gelen aylık iklim özeti kullanılır.
+
+`rotation` nesnesinin alanları:
+
+| Alan | Tip | Açıklama |
+|---|---|---|
+| `minimum_return_years` | integer veya null | Kaynakta doğrulanmışsa ürünün aynı tarlaya dönüşü için alt sınır |
+| `avoid_continuous_cropping` | boolean | Ürünün arka arkaya yetiştirilmesinden kaçınılması gerekip gerekmediği |
+| `example_rotations` | string listelerinin listesi | Kaynaklarda verilen ve desteklenen ürün kimliklerine dönüştürülen örnekler |
+| `disease_groups` | string listesi | Ürünler arasında ortak hastalık/konukçu riskini eşleştiren grup kodları |
+| `notes` | string listesi | Rotasyonun geçerlilik koşulları ve bilimsel sınırlamaları |
+
+`sources` içindeki her nesne `title`, `url` ve `supports` alanlarını içerir. `supports`, ilgili kaynağın hangi
+ürün alanlarını desteklediğini gösterir. Doğrulanamayan sayısal bir değer tahmin edilmez; gerektiğinde `null`
+kullanılır ve sınırlama sonuçta açıklanır.
+
+Şu an desteklenen ürün kimlikleri:
+
+- `wheat`
+- `barley`
+- `corn`
+- `chickpea`
+- `sunflower`
+- `canola`
+- `potato`
+- `processing_tomato`
+- `lentil`
+
+`fallow` bir ürün değildir ve `crops.json` içine eklenmez. Yalnızca `previous_crop` için özel arazi durumu
+olarak kullanılabilir.
 
 ---
 
@@ -127,11 +168,13 @@ Content-Type: application/json
 
 ```json
 {
-  "latitude": 37.8746,
-  "longitude": 32.4932,
+  "latitude": 40.195,
+  "longitude": 29.06,
   "start_date": "2025-11-08",
   "end_date": "2026-11-07",
-  "current_crop": "wheat",
+  "previous_crop": "wheat",
+  "current_crop": "chickpea",
+  "next_crop": "sunflower",
   "soil_type": "loamy",
   "priority": "water_saving"
 }
@@ -145,13 +188,24 @@ Content-Type: application/json
 | `longitude` | number | `-180` ile `180` arasında olmalı |
 | `start_date` | string | `YYYY-MM-DD` formatında olmalı |
 | `end_date` | string | `YYYY-MM-DD` formatında olmalı |
-| `current_crop` | string | `crops.json` içindeki ürün kimliklerinden biri olmalı |
+| `previous_crop` | string veya null | `crops.json` içindeki ürün kimliklerinden biri, özel `fallow` değeri veya `null` olmalı |
+| `current_crop` | string | Kullanıcının şimdi ekmek veya dikmek istediği ürünün `crops.json` içindeki kimliği olmalı |
+| `next_crop` | string veya null | Kullanıcının daha sonraki dönem için planladığı ürünün `crops.json` içindeki kimliği veya `null` olmalı |
 | `soil_type` | string | `sandy`, `loamy`, `clay` veya `silty` |
 | `priority` | string | `balanced`, `water_saving` veya `yield` |
 
 `start_date`, `end_date` tarihinden sonra olamaz.
 
 Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri NASA POWER isteğinde kullanılmak üzere `YYYYMMDD` biçimine dönüştürür.
+
+`start_date` ve `end_date` ürünlerin ekim veya hasat tarihleri değil, NASA iklim analiz dönemidir.
+
+Ürün geçmişi ve planı için aşağıdaki kurallar uygulanır:
+
+- `previous_crop: null`, kullanıcının önceki ürünü bilmediği anlamına gelir. Önceki ürüne bağlı rotasyon değerlendirmesi yapılmaz.
+- `previous_crop: "fallow"`, tarlanın nadasa bırakıldığı anlamına gelir ve bilinmeyen geçmişten ayrı değerlendirilir. `fallow`, `crops.json` içinde bir ürün kimliği değildir.
+- `next_crop: null`, kullanıcının daha sonraki dönem için ürün planlamadığı anlamına gelir. Sonraki ürünle geçiş uyumu değerlendirilmez.
+- Ürün kimliklerinin birbirine eşit olması istek doğrulama hatası değildir. Aynı ürünün tekrarı rotasyon modülü tarafından risk olarak değerlendirilir.
 
 ---
 
@@ -162,9 +216,9 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
 ```json
 {
   "location": {
-    "latitude": 37.8746,
-    "longitude": 32.4932,
-    "label": "Konya, Türkiye"
+    "latitude": 40.195,
+    "longitude": 29.06,
+    "label": "Bursa, Türkiye"
   },
   "source": {
     "name": "NASA POWER",
@@ -198,14 +252,38 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
       "precipitation_mm": 31.6
     }
   ],
+  "planned_rotation_assessment": {
+    "crop_id": "chickpea",
+    "crop_name": "Nohut",
+    "rotation": [
+      "wheat",
+      "chickpea",
+      "sunflower"
+    ],
+    "scores": {
+      "total": 76,
+      "climate": 80,
+      "water": 72,
+      "soil": 78,
+      "rotation": 73
+    },
+    "advantages": [
+      "Buğdaydan sonra farklı bir bitki ailesi kullanır."
+    ],
+    "risks": [
+      "Seçilen dönemde su stresi riski dikkate alınmalıdır."
+    ],
+    "limitations": []
+  },
   "recommendations": [
     {
       "rank": 1,
-      "crop_id": "chickpea",
-      "crop_name": "Nohut",
+      "crop_id": "barley",
+      "crop_name": "Arpa",
       "rotation": [
         "wheat",
-        "chickpea"
+        "barley",
+        "sunflower"
       ],
       "scores": {
         "total": 84,
@@ -226,6 +304,19 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
   ]
 }
 ```
+
+`planned_rotation_assessment`, kullanıcının `current_crop` olarak seçtiği ürünü; biliniyorsa önceki ve sonraki ürünlerle birlikte değerlendirir.
+
+`recommendations`, `current_crop` yerine aynı ekim için kullanılabilecek alternatifleri içerir. Öneriler, kullanıcının seçtiği üründen sonraki sezon için değildir.
+
+Öneri kuralları:
+
+- `current_crop`, `recommendations` listesinde tekrar edilmez.
+- En fazla üç öneri döndürülür.
+- Uygun alternatif bulunamazsa `recommendations` boş liste olarak döndürülür.
+- Kullanıcının seçtiği plan riskli olsa bile `planned_rotation_assessment` döndürülür.
+- `previous_crop` veya `next_crop` değeri `null` olduğunda bu bilinmeyen değer `rotation` listesine eklenmez ve değerlendirilemeyen konu `limitations` içinde açıklanır.
+- `previous_crop` değeri `fallow` olduğunda özel nadas durumu `rotation` listesinde korunabilir ve nadas kuralları uygulanır.
 
 ---
 
@@ -386,10 +477,14 @@ Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemel
 
 ### Ürün rotasyonu
 
-- Kullanıcının mevcut ürününü, toprak türünü ve önceliğini kullanır.
+- `backend/data/crops.json` dosyasındaki ayrıntılı ürün, iklim eşiği, toprak, rotasyon ve kaynak alanlarını doğrudan okur.
+- Kullanıcının önceki ürününü, şimdi ekmek istediği ürünü, isteğe bağlı sonraki ürününü, toprak türünü ve önceliğini kullanır.
 - İklim analizi sonuçlarını değerlendirir.
-- Ürün adaylarını puanlar.
-- Sıralanmış ve açıklanabilir öneriler üretir.
+- Kullanıcının seçtiği `previous_crop → current_crop → next_crop` planını değerlendirir.
+- `current_crop` yerine kullanılabilecek ürün adaylarını puanlar.
+- En fazla üç sıralanmış ve açıklanabilir alternatif öneri üretir.
+- Kişi 3'ün ürettiği iklim sonucu alanlarını değiştirmez ve ham NASA verisini yeniden analiz etmez.
+- Eksik önceki veya sonraki ürün bilgisini hata olarak değerlendirmez; değerlendirilemeyen noktaları açıklar.
 
 ### Backend ana akışı
 
