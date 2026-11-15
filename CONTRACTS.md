@@ -205,12 +205,30 @@ toplam yağışıdır. Rotasyon modülü bu değeri `annual_precipitation_range_
 süresini gün cinsinden hesaplar ve yıllık ortalamaya dönüştürür:
 
 ```text
-analysis_years = inclusive_day_count / 365.2425
+analysis_years = period_days / 365.2425
 annual_precipitation_mm = total_precipitation_mm / analysis_years
 ```
 
 Bu nedenle rotasyon modülü toplam yağışı sabit olarak `5` değerine bölmez; analiz dönemi değiştiğinde aynı
 hesap çalışmaya devam eder.
+
+Backend ana akışı, Kişi 3'ün ürettiği nesneyi değiştirmeden bir kopyasına aşağıdaki alanı ekler:
+
+```json
+"metadata": {
+  "start_date": "2021-01-01",
+  "end_date": "2025-12-31",
+  "period_days": 1826
+}
+```
+
+`period_days` pozitif bir tam sayı olmalı ve `(end_date - start_date).days + 1` sonucuyla birebir
+eşleşmelidir. Rotasyon modülü bu tutarlılığı yeniden doğrular.
+
+`total_precipitation_mm` ve `data_completeness_percent` alanlarında boolean, `NaN`, pozitif sonsuzluk veya
+negatif sonsuzluk kabul edilmez. Veri tamlığı `0` ile `100` arasında olmalıdır. Veri tamlığı `%100` değerinden
+düşükse algoritma çalışmaya devam eder ve yıllık yağış değerlendirmesinin eksik günlerden etkilenebileceğini
+`limitations` içinde belirtir.
 
 Ürün geçmişi ve planı için aşağıdaki kurallar uygulanır:
 
@@ -329,6 +347,9 @@ hesap çalışmaya devam eder.
 - `current_crop`, `recommendations` listesinde tekrar edilmez.
 - En fazla üç öneri döndürülür.
 - Uygun alternatif bulunamazsa `recommendations` boş liste olarak döndürülür.
+- Alternatif olabilmek için toplam puan en az `50` olmalıdır.
+- Alternatifler önce toplam puana göre azalan, eşit puanda `crop_id` değerine göre artan biçimde sıralanır.
+- `rank` değerleri `1` ile başlar ve listede kesintisiz ilerler.
 - Kullanıcının seçtiği plan riskli olsa bile `planned_rotation_assessment` döndürülür.
 - `previous_crop` veya `next_crop` değeri `null` olduğunda bu bilinmeyen değer `rotation` listesine eklenmez ve değerlendirilemeyen konu `limitations` içinde açıklanır.
 - `previous_crop` değeri `fallow` olduğunda özel nadas durumu `rotation` listesinde korunabilir ve nadas kuralları uygulanır.
@@ -518,6 +539,10 @@ def recommend_rotations(
 ) -> dict:
     ...
 ```
+
+Fonksiyon kendisine verilen `climate_result` sözlüğünü değiştirmez. Yalnızca birleşik API cevabına eklenecek
+`planned_rotation_assessment` ve `recommendations` alanlarını yeni bir sözlük içinde döndürür. Puanlamada
+kullanılan ortalama, minimum ve maksimum sıcaklık alanları da boolean olmayan sonlu sayılar olarak doğrulanır.
 
 Parametreler yalnızca isimleriyle verilmelidir. Rotasyon modülünün hata sınıfları:
 
