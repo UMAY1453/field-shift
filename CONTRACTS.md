@@ -200,11 +200,26 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
 
 `start_date` ve `end_date` ürünlerin ekim veya hasat tarihleri değil, NASA iklim analiz dönemidir.
 
+`climate_result.summary.total_precipitation_mm`, `start_date` ile `end_date` arasındaki analiz döneminin
+toplam yağışıdır. Rotasyon modülü bu değeri `annual_precipitation_range_mm` ile karşılaştırmadan önce analiz
+süresini gün cinsinden hesaplar ve yıllık ortalamaya dönüştürür:
+
+```text
+analysis_years = inclusive_day_count / 365.2425
+annual_precipitation_mm = total_precipitation_mm / analysis_years
+```
+
+Bu nedenle rotasyon modülü toplam yağışı sabit olarak `5` değerine bölmez; analiz dönemi değiştiğinde aynı
+hesap çalışmaya devam eder.
+
 Ürün geçmişi ve planı için aşağıdaki kurallar uygulanır:
 
 - `previous_crop: null`, kullanıcının önceki ürünü bilmediği anlamına gelir. Önceki ürüne bağlı rotasyon değerlendirmesi yapılmaz.
 - `previous_crop: "fallow"`, tarlanın nadasa bırakıldığı anlamına gelir ve bilinmeyen geçmişten ayrı değerlendirilir. `fallow`, `crops.json` içinde bir ürün kimliği değildir.
 - `next_crop: null`, kullanıcının daha sonraki dönem için ürün planlamadığı anlamına gelir. Sonraki ürünle geçiş uyumu değerlendirilmez.
+- `current_crop`, `crops.json` içindeki geçerli bir ürün olmak zorundadır; `null` veya `fallow` olamaz.
+- `previous_crop` yalnızca `null`, `fallow` veya `crops.json` içindeki geçerli bir ürün olabilir.
+- `next_crop` yalnızca `null` veya `crops.json` içindeki geçerli bir ürün olabilir; `fallow` olamaz.
 - Ürün kimliklerinin birbirine eşit olması istek doğrulama hatası değildir. Aynı ürünün tekrarı rotasyon modülü tarafından risk olarak değerlendirilir.
 
 ---
@@ -317,6 +332,9 @@ Frontend tarihleri `YYYY-MM-DD` biçiminde gönderir. NASA servisi bu tarihleri 
 - Kullanıcının seçtiği plan riskli olsa bile `planned_rotation_assessment` döndürülür.
 - `previous_crop` veya `next_crop` değeri `null` olduğunda bu bilinmeyen değer `rotation` listesine eklenmez ve değerlendirilemeyen konu `limitations` içinde açıklanır.
 - `previous_crop` değeri `fallow` olduğunda özel nadas durumu `rotation` listesinde korunabilir ve nadas kuralları uygulanır.
+- `minimum_return_years`, yalnızca `previous_crop → current_crop → next_crop` zinciriyle kesin doğrulanamıyorsa
+  sonuç ilgili kaynaklı kuralı `limitations` içinde açıklar. Bu sınırlama, arka arkaya aynı ürünün ayrıca risk
+  olarak işaretlenmesini engellemez.
 
 ---
 
@@ -485,6 +503,33 @@ Frontend kullanıcıya ham hata nesnesi veya teknik hata yığını göstermemel
 - En fazla üç sıralanmış ve açıklanabilir alternatif öneri üretir.
 - Kişi 3'ün ürettiği iklim sonucu alanlarını değiştirmez ve ham NASA verisini yeniden analiz etmez.
 - Eksik önceki veya sonraki ürün bilgisini hata olarak değerlendirmez; değerlendirilemeyen noktaları açıklar.
+
+Rotasyon modülünün ana giriş noktası aşağıdaki imzayı kullanacaktır:
+
+```python
+def recommend_rotations(
+    *,
+    previous_crop: str | None,
+    current_crop: str,
+    next_crop: str | None,
+    soil_type: str,
+    priority: str,
+    climate_result: dict,
+) -> dict:
+    ...
+```
+
+Parametreler yalnızca isimleriyle verilmelidir. Rotasyon modülünün hata sınıfları:
+
+| Hata | Anlamı |
+|---|---|
+| `RecommendationError` | Bütün rotasyon modülü hatalarının temel sınıfı |
+| `InvalidCropSelectionError` | Bilinmeyen ürün veya yanlış alanda kullanılan `fallow` |
+| `InvalidClimateResultError` | Eksik/geçersiz iklim özeti, tarih aralığı veya toplam yağış |
+| `CropDataError` | `crops.json` dosyasının okunamaması veya temel yapısının bozuk olması |
+
+Rotasyon modülü yeni bir harici paket gerektirmez; `json`, `pathlib` ve `datetime` Python standart
+kütüphanelerini kullanır.
 
 ### Backend ana akışı
 
