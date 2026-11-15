@@ -241,6 +241,8 @@ def _validate_and_sort_records(
     )
 
     return validated_records
+
+
 def _ensure_core_data_available(
     validated_records: list[dict[str, Any]],
 ) -> None:
@@ -262,27 +264,8 @@ def _ensure_core_data_available(
             "Bütün dönem boyunca geçerli ölçümü bulunmayan "
             f"çekirdek alanlar: {unavailable_fields_text}."
         )
-def _ensure_core_data_available(
-    validated_records: list[dict[str, Any]],
-) -> None:
-    """Her çekirdek alanda en az bir geçerli ölçüm bulunduğunu doğrular."""
 
-    unavailable_fields = [
-        field_name
-        for field_name in CORE_FIELDS
-        if not any(
-            record[field_name] is not None
-            for record in validated_records
-        )
-    ]
 
-    if unavailable_fields:
-        unavailable_fields_text = ", ".join(unavailable_fields)
-
-        raise InsufficientClimateDataError(
-            "Bütün dönem boyunca geçerli ölçümü bulunmayan "
-            f"çekirdek alanlar: {unavailable_fields_text}."
-        )
 def _collect_valid_values(
     validated_records: list[dict[str, Any]],
     field_name: str,

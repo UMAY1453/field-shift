@@ -301,76 +301,8 @@ def test_allows_completely_missing_enrichment_fields():
 
     # RH2M ve GWETROOT çekirdek alan olmadığı için hata oluşmamalıdır.
     _ensure_core_data_available(validated_records)
-@pytest.mark.parametrize(
-    "missing_field",
-    [
-        "temperature_c",
-        "temperature_min_c",
-        "temperature_max_c",
-        "precipitation_mm",
-    ],
-)
-def test_rejects_core_field_missing_for_entire_period(
-    missing_field,
-):
-    """Bir çekirdek alan tamamen eksikse yetersiz veri hatası oluşur."""
-
-    records = [
-        make_record(date="2025-01-01"),
-        make_record(date="2025-01-02"),
-        make_record(date="2025-01-03"),
-    ]
-
-    for record in records:
-        record[missing_field] = None
-
-    with pytest.raises(
-        InsufficientClimateDataError,
-        match=missing_field,
-    ):
-        analyze_climate(records)
 
 
-def test_allows_partially_missing_core_field():
-    """Çekirdek alanda en az bir geçerli değer varsa analiz devam edebilir."""
-
-    records = [
-        make_record(
-            date="2025-01-01",
-            temperature_c=None,
-        ),
-        make_record(
-            date="2025-01-02",
-            temperature_c=12.0,
-        ),
-    ]
-
-    validated_records = _validate_and_sort_records(records)
-
-    # Hata oluşmaması beklenir.
-    _ensure_core_data_available(validated_records)
-
-
-def test_allows_completely_missing_enrichment_fields():
-    """Zenginleştirici alanların tamamen eksik olması temel analizi durdurmaz."""
-
-    records = [
-        make_record(
-            date="2025-01-01",
-            relative_humidity_percent=None,
-            root_zone_wetness=None,
-        ),
-        make_record(
-            date="2025-01-02",
-            relative_humidity_percent=None,
-            root_zone_wetness=None,
-        ),
-    ]
-
-    validated_records = _validate_and_sort_records(records)
-
-    # RH2M ve GWETROOT çekirdek alan olmadığı için hata oluşmamalıdır.
-    _ensure_core_data_available(validated_records)
 def test_calculates_basic_climate_summary():
     """Ortalama, minimum, maksimum sıcaklık ve toplam yağış hesaplanır."""
 
