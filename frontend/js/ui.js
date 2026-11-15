@@ -66,38 +66,6 @@ function createElement(tagName, className, textContent) {
 }
 
 /**
- * Tarihi input alanlarının istediği YYYY-MM-DD biçimine dönüştürür.
- */
-function toDateInputValue(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
-
-/**
- * NASA verisinin gecikmesini dikkate alarak son bir yıllık aralık seçer.
- */
-export function setDefaultDateRange() {
-    const endDate = new Date();
-
-    // Günlük verilerin tamamlanması için son yedi gün dışarıda bırakılır.
-    endDate.setDate(endDate.getDate() - 7);
-
-    const startDate = new Date(endDate);
-    startDate.setFullYear(startDate.getFullYear() - 1);
-    startDate.setDate(startDate.getDate() + 1);
-
-    const startInput = getElement("start-date");
-    const endInput = getElement("end-date");
-
-    startInput.value = toDateInputValue(startDate);
-    endInput.value = toDateInputValue(endDate);
-    endInput.max = toDateInputValue(endDate);
-}
-
-/**
  * Haritadan gelen koordinatları form alanlarına yazar.
  */
 export function updateSelectedLocation({ latitude, longitude }) {
@@ -117,30 +85,33 @@ export function populateCrops(crops) {
     const currentSelect = getElement("current-crop");
     const nextSelect = getElement("next-crop");
 
-    // Eski eşlemeleri temizleyip özel nadas değerini yeniden ekler.
+    // Eski ürün adı eşlemelerini temizler.
     cropNamesById.clear();
+
+    // Nadas yalnızca previous_crop alanında kullanılabilir.
     cropNamesById.set("fallow", "Nadas");
 
     previousSelect.replaceChildren();
     currentSelect.replaceChildren();
     nextSelect.replaceChildren();
 
-    // Boş önceki ürün seçimi backend'e null olarak gönderilecek.
-    const unknownPreviousOption = createElement(
+    // Önceki ürün zorunludur; boş seçenek yalnızca açıklamadır.
+    const previousPlaceholder = createElement(
         "option",
         "",
-        "Bilmiyorum",
+        "Önceki ürünü seçin",
     );
-    unknownPreviousOption.value = "";
-    unknownPreviousOption.selected = true;
-    previousSelect.append(unknownPreviousOption);
+    previousPlaceholder.value = "";
+    previousPlaceholder.selected = true;
+    previousPlaceholder.disabled = true;
+    previousSelect.append(previousPlaceholder);
 
-    // Nadas, bilinmeyen geçmişten ayrı bir özel değerdir.
+    // Nadas yalnızca önceki ürün listesine eklenir.
     const fallowOption = createElement("option", "", "Nadas");
     fallowOption.value = "fallow";
     previousSelect.append(fallowOption);
 
-    // Current crop zorunlu olduğu için seçilemeyen placeholder kullanılır.
+    // Değerlendirilecek mevcut ürün zorunludur.
     const currentPlaceholder = createElement(
         "option",
         "",
@@ -151,20 +122,21 @@ export function populateCrops(crops) {
     currentPlaceholder.disabled = true;
     currentSelect.append(currentPlaceholder);
 
-    // Boş sonraki ürün seçimi backend'e null olarak gönderilecek.
-    const unplannedNextOption = createElement(
+    // Sonraki ürün de güncel backend sözleşmesinde zorunludur.
+    const nextPlaceholder = createElement(
         "option",
         "",
-        "Henüz planlamadım",
+        "Sonraki dönem ürününü seçin",
     );
-    unplannedNextOption.value = "";
-    unplannedNextOption.selected = true;
-    nextSelect.append(unplannedNextOption);
+    nextPlaceholder.value = "";
+    nextPlaceholder.selected = true;
+    nextPlaceholder.disabled = true;
+    nextSelect.append(nextPlaceholder);
 
     crops.forEach((crop) => {
         const label = crop.name ?? crop.id;
 
-        // Sonuç kartlarında kullanılmak üzere Türkçe görünen adı saklar.
+        // Sonuç kartlarında Türkçe adı göstermek için saklar.
         cropNamesById.set(crop.id, label);
 
         const previousOption = createElement("option", "", label);
@@ -186,7 +158,6 @@ export function populateCrops(crops) {
     currentSelect.disabled = !hasCrops;
     nextSelect.disabled = !hasCrops;
 }
-
 /**
  * Ürün listesinin alınamadığını bütün ürün alanlarında belirtir.
  */
@@ -214,7 +185,7 @@ export function showCropsUnavailable() {
 }
 
 /**
- * Formu API isteği için uygun nesneye dönüştürür.
+ * Formu güncel API isteğine uygun nesneye dönüştürür.
  */
 export function readAnalysisRequest(form) {
     if (!form.checkValidity()) {
@@ -226,48 +197,82 @@ export function readAnalysisRequest(form) {
     const longitudeValue = getElement("longitude").value;
 
     if (!latitudeValue || !longitudeValue) {
-        throw new Error("Lütfen haritadan bir konum seçin.");
+        throw new Error(
+            "Haritadan bir konum seçin veya enlem ve boylamı elle girin.",
+        );
     }
 
     const latitude = Number(latitudeValue);
     const longitude = Number(longitudeValue);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        throw new Error("Seçilen konum geçerli değil.");
-    }
-    const startDate = getElement("start-date").value;
-    const endDate = getElement("end-date").value;
-
-    if (startDate > endDate) {
+    if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+    ) {
         throw new Error(
-            "Başlangıç tarihi, bitiş tarihinden sonra olamaz.",
+            "Enlem -90 ile 90, boylam -180 ile 180 arasında olmalıdır.",
+        );
+    }
+
+    const harvestStartDate =
+        getElement("harvest-start-date").value;
+
+    const harvestEndDate =
+        getElement("harvest-end-date").value;
+
+    if (!harvestStartDate || !harvestEndDate) {
+        throw new Error(
+            "Planlanan hasat başlangıç ve bitiş tarihlerini seçin.",
+        );
+    }
+
+    if (harvestStartDate > harvestEndDate) {
+        throw new Error(
+            "Hasat başlangıç tarihi, bitiş tarihinden sonra olamaz.",
+        );
+    }
+
+    const start = new Date(`${harvestStartDate}T00:00:00Z`);
+    const end = new Date(`${harvestEndDate}T00:00:00Z`);
+
+    const harvestPeriodDays =
+        Math.floor(
+            (end.getTime() - start.getTime()) / 86_400_000,
+        ) + 1;
+
+    if (harvestPeriodDays > 120) {
+        throw new Error(
+            "Planlanan hasat dönemi en fazla 120 gün olabilir.",
         );
     }
 
     return {
         latitude,
         longitude,
-        start_date: startDate,
-        end_date: endDate,
 
-        // Boş isteğe bağlı seçimler JSON içinde null gönderilir.
         previous_crop:
-            getElement("previous-crop").value || null,
+            getElement("previous-crop").value,
 
         current_crop:
             getElement("current-crop").value,
 
         next_crop:
-            getElement("next-crop").value || null,
+            getElement("next-crop").value,
 
         soil_type:
             getElement("soil-type").value,
 
         priority:
             getElement("priority").value,
+
+        harvest_start_date: harvestStartDate,
+        harvest_end_date: harvestEndDate,
     };
 }
-
 /**
  * Ekrandaki hata kutusunu gösterir.
  */
@@ -654,8 +659,9 @@ export function resetAnalysisForm() {
     getElement("soil-type").value = "";
     getElement("priority").value = "balanced";
 
-    // Form sıfırlanınca boşalan tarihleri yeniden varsayılan döneme ayarlar.
-    setDefaultDateRange();
+    // Hasat tarihlerini yeni analiz için temizler.
+    getElement("harvest-start-date").value = "";
+    getElement("harvest-end-date").value = "";
 
     // Önceki hata ve analiz sonuçlarını gizler.
     clearError();

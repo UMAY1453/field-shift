@@ -403,6 +403,11 @@ select {
         border-color var(--transition-fast),
         box-shadow var(--transition-fast);
 }
+/* Formdaki seçim kutularını aynı yükseklikte tutar. */
+.analysis-form select {
+    height: 56px;
+    white-space: nowrap;
+}
 
 input:hover,
 select:hover {
