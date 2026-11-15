@@ -10,6 +10,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from backend.reference_period import (
+    default_reference_end_date,
+    default_reference_start_date,
+    get_latest_complete_reference_period,
+)
+
 
 SoilType = Literal["sandy", "loamy", "clay", "silty"]
 Priority = Literal["balanced", "water_saving", "yield"]
@@ -17,7 +23,11 @@ SourceMode = Literal["live", "cache", "demo"]
 RiskLevel = Literal["low", "medium", "high"]
 GrowingSeason = Literal["spring", "summer", "autumn", "winter"]
 WaterNeed = Literal["low", "medium", "high"]
-MAX_ANALYSIS_DAYS = 1826
+MAX_ANALYSIS_DAYS = 1827
+MAX_HARVEST_PERIOD_DAYS = 120
+_DEFAULT_REFERENCE_PERIOD = get_latest_complete_reference_period()
+DEFAULT_REFERENCE_START_DATE = _DEFAULT_REFERENCE_PERIOD.start_date
+DEFAULT_REFERENCE_END_DATE = _DEFAULT_REFERENCE_PERIOD.end_date
 
 
 class ApiModel(BaseModel):
@@ -84,13 +94,27 @@ class CropsResponse(ApiModel):
 class AnalyzeRequest(ApiModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    start_date: date
-    end_date: date
-    previous_crop: str | None = Field(min_length=1)
+    start_date: date = Field(default_factory=default_reference_start_date)
+    end_date: date = Field(default_factory=default_reference_end_date)
+    previous_crop: str = Field(min_length=1)
     current_crop: str = Field(min_length=1)
-    next_crop: str | None = Field(min_length=1)
+    next_crop: str = Field(min_length=1)
     soil_type: SoilType
     priority: Priority
+    harvest_start_date: date
+    harvest_end_date: date
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_complete_reference_date_pair(cls, values: object) -> object:
+        if isinstance(values, dict):
+            has_start = "start_date" in values
+            has_end = "end_date" in values
+            if has_start != has_end:
+                raise ValueError(
+                    "start_date ve end_date birlikte gönderilmelidir."
+                )
+        return values
 
     @model_validator(mode="after")
     def validate_request_rules(self) -> "AnalyzeRequest":
@@ -101,11 +125,26 @@ class AnalyzeRequest(ApiModel):
         period_days = (self.end_date - self.start_date).days + 1
         if period_days > MAX_ANALYSIS_DAYS:
             raise ValueError("Analiz dönemi en fazla 5 yıl olabilir.")
+        if self.harvest_start_date > self.harvest_end_date:
+            raise ValueError(
+                "Hasat başlangıç tarihi, bitiş tarihinden sonra olamaz."
+            )
+        harvest_period_days = (
+            self.harvest_end_date - self.harvest_start_date
+        ).days + 1
+        if harvest_period_days > MAX_HARVEST_PERIOD_DAYS:
+            raise ValueError(
+                "Planlanan hasat dönemi en fazla 120 gün olabilir."
+            )
         if self.current_crop == "fallow" or self.next_crop == "fallow":
             raise ValueError(
                 "fallow yalnızca previous_crop alanında kullanılabilir."
             )
         return self
+
+    @property
+    def uses_automatic_reference_period(self) -> bool:
+        return not ({"start_date", "end_date"} & self.model_fields_set)
 
 
 class DailyClimateRecord(ApiModel):
@@ -136,8 +175,14 @@ class Source(ApiModel):
     name: str = "NASA POWER"
     mode: SourceMode
     time_standard: Literal["LST"] = "LST"
+    requested_start_date: date
+    requested_end_date: date
     start_date: date
     end_date: date
+    last_complete_year: int
+    is_latest_complete_period: bool
+    fallback_used: bool
+    warnings: list[str]
 
 
 class ClimateSummary(ApiModel):
@@ -167,6 +212,25 @@ class ClimateAnalysisResult(ApiModel):
     summary: ClimateSummary
     risk: ClimateRisk
     monthly_climate: list[MonthlyClimate]
+
+
+class HistoricalHarvestWindow(ApiModel):
+    start_date: date
+    end_date: date
+
+
+class HarvestPeriodClimate(ApiModel):
+    planned_start_date: date
+    planned_end_date: date
+    period_days: int = Field(ge=1, le=MAX_HARVEST_PERIOD_DAYS)
+    seasons_analyzed: int = Field(ge=1)
+    historical_windows: list[HistoricalHarvestWindow] = Field(min_length=1)
+    average_temperature_c: float | None
+    average_maximum_temperature_c: float | None
+    average_precipitation_mm_per_period: float | None
+    average_rainy_days_per_period: float | None
+    average_hot_days_per_period: float | None
+    data_completeness_percent: float = Field(ge=0, le=100)
 
 
 class RecommendationScores(ApiModel):
@@ -203,6 +267,7 @@ class AnalyzeResponse(ApiModel):
     summary: ClimateSummary
     risk: ClimateRisk
     monthly_climate: list[MonthlyClimate]
+    harvest_period_climate: HarvestPeriodClimate
     planned_rotation_assessment: PlannedRotationAssessment
     recommendations: list[Recommendation] = Field(max_length=3)
 
